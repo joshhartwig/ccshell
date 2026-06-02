@@ -19,7 +19,7 @@ func main() {
 			break
 		}
 		input = scanner.Text()
-		fmt.Printf("command not found: %s\n", input)
+		fmt.Printf("%s: command not found\n", input)
 
 	}
 
