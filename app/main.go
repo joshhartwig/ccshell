@@ -19,6 +19,9 @@ func main() {
 			break
 		}
 		input = scanner.Text()
+		if input == "exit" {
+			break
+		}
 		fmt.Printf("%s: command not found\n", input)
 
 	}
