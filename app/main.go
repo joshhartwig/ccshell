@@ -23,7 +23,6 @@ func main() {
 		return nil
 	}
 	app.commands["echo"] = func(s ...string) error {
-		fmt.Print("echo ")
 		for _, x := range s {
 			fmt.Printf("%s", x)
 		}
