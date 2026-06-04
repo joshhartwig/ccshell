@@ -11,19 +11,20 @@ var _ = fmt.Print
 
 func main() {
 	// TODO: Uncomment the code below to pass the first stage
+	commands := make(map[string]func(s ...string) error)
+	commands["exit"] = func(s ...string) error { return nil }
+
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
-		var input string
 		fmt.Print("$ ")
 		if !scanner.Scan() {
 			break
 		}
-		input = scanner.Text()
-		if input == "exit" {
-			break
+		cmd := scanner.Text()
+		if cmd == "exit" {
+			return
+		} else {
+			fmt.Printf("%s : command not found\n", cmd)
 		}
-		fmt.Printf("%s: command not found\n", input)
-
 	}
-
 }
