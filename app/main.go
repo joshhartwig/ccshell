@@ -18,17 +18,7 @@ func main() {
 	// TODO: Uncomment the code below to pass the first stage
 	var app app
 	app.commands = make(map[string]func(s ...string) error)
-	app.commands["exit"] = func(s ...string) error {
-		os.Exit(0)
-		return nil
-	}
-	app.commands["echo"] = func(s ...string) error {
-		for _, x := range s {
-			fmt.Printf("%s", x)
-		}
-		fmt.Print("\n")
-		return nil
-	}
+	app.registerCommands()
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
@@ -62,4 +52,29 @@ func (a *app) processInput(s string) error {
 		return err
 	}
 	return nil
+}
+
+func (a *app) registerCommands() {
+	a.commands["exit"] = func(s ...string) error {
+		os.Exit(0)
+		return nil
+	}
+	a.commands["echo"] = func(s ...string) error {
+		for _, x := range s {
+			fmt.Printf("%s", x)
+		}
+		fmt.Print("\n")
+		return nil
+	}
+	a.commands["type"] = func(s ...string) error {
+		// iterate through s
+		for _, x := range s {
+			_, ok := a.commands[x]
+			if !ok {
+				return fmt.Errorf("%s: not found\n", x)
+			}
+			fmt.Printf("type %s is a shell builtin\n", x)
+		}
+		return nil
+	}
 }
