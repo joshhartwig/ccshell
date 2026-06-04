@@ -73,7 +73,7 @@ func (a *app) registerCommands() {
 			if !ok {
 				return fmt.Errorf("%s: not found\n", x)
 			}
-			fmt.Printf("type %s is a shell builtin\n", x)
+			fmt.Printf("%s is a shell builtin\n", x)
 		}
 		return nil
 	}
