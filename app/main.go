@@ -53,7 +53,7 @@ func (a *app) processInput(s string) error {
 	// try and find the command in the map
 	f, ok := a.commands[cmd]
 	if !ok {
-		return fmt.Errorf("%s : command not found\n", s)
+		return fmt.Errorf("%s: command not found\n", s)
 	}
 
 	// if found run the command
