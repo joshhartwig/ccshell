@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 )
 
@@ -90,7 +91,7 @@ func (a *app) registerCommands() {
 			_, ok := a.commands[x]
 			if !ok {
 				// look for executable
-				found := a.findExecutables(x)
+				found := a.findExe(x)
 				if !found {
 					return fmt.Errorf("%s: not found\n", x)
 				}
@@ -115,12 +116,15 @@ func (a *app) parsePath(s string) {
 // if it does write command is <full path> else skip
 // ex.. $type grep => grep is /usr/bin/grep
 func (a *app) findExecutables(cmd string) bool {
+
+	// iter through each path and search for exe
 	for _, dir := range a.paths {
 		direntry, err := os.ReadDir(dir)
 		if err != nil {
 			return false
 		}
 
+		// iter through each file
 		for _, f := range direntry {
 			if !f.IsDir() && f.Name() == cmd { // not directory & name matches cmd
 				fileInfo, err := f.Info()
@@ -129,13 +133,22 @@ func (a *app) findExecutables(cmd string) bool {
 				}
 				// is executable and matches command
 				if IsExecAll(fileInfo.Mode()) {
-					fmt.Printf("%s is %s/%s\n", cmd, dir, cmd)
+					fmt.Printf("%s is %s/%s\n", cmd, dir, cmd) // output: type cat => cat is /bin/cat
 					return true
 				}
 			}
 		}
 	}
 	return false
+}
+
+func (a *app) findExe(cmd string) bool {
+	path, err := exec.LookPath(cmd)
+	if err != nil {
+		return false
+	}
+	fmt.Printf("%s is %s\n", cmd, path)
+	return true
 }
 
 func IsExecAll(mode os.FileMode) bool {
