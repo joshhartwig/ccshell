@@ -92,7 +92,7 @@ func (a *app) registerCommands() {
 				// look for executable
 				found := a.findExecutables(x)
 				if !found {
-					return fmt.Errorf("%s: command not found\n", x)
+					return fmt.Errorf("%s: not found\n", x)
 				}
 				return nil
 			}
@@ -122,15 +122,14 @@ func (a *app) findExecutables(cmd string) bool {
 		}
 
 		for _, f := range direntry {
-			// if the entry is not a directory and the name matches the cmd
-			if !f.IsDir() && f.Name() == cmd {
+			if !f.IsDir() && f.Name() == cmd { // not directory & name matches cmd
 				fileInfo, err := f.Info()
 				if err != nil {
 					return false
 				}
 				// is executable and matches command
 				if IsExecAll(fileInfo.Mode()) {
-					fmt.Printf("%s is %s\n", cmd, dir)
+					fmt.Printf("%s is %s/%s\n", cmd, dir, cmd)
 					return true
 				}
 			}
