@@ -12,31 +12,22 @@ import (
 // Ensures gofmt doesn't remove the "fmt" import in stage 1 (feel free to remove this!)
 var _ = fmt.Print
 
-type app struct {
-	commands map[string]func(s ...string) error
-	paths    []string
+type shellApplication struct {
+	builtins map[string]func(s ...string) error //command and associate functions
+	paths    []string                           // used to access PATH folders
 }
 
 func main() {
-	// TODO: Uncomment the code below to pass the first stage
-	/*
-			If the command is not a builtin, your shell must go through every directory in PATH. For each directory:
-		Check if a file with the command name exists.
-		Check if the file has execute permissions.
-		If the file exists and has execute permissions, print <command> is <full_path> and stop.
-		If the file exists but lacks execute permissions, skip it and continue to the next directory.
-		If no executable is found in any directory, print <command>: not found.
-	*/
-	var app app
-	app.commands = make(map[string]func(s ...string) error)
-	app.registerCommands()
+	var shellApp shellApplication
+	shellApp.builtins = make(map[string]func(s ...string) error)
+	shellApp.registerBuiltins()
 
 	path := os.Getenv("PATH")
 	if path == "" {
 		log.Panic("error path value empty")
 	}
 
-	app.parsePath(path)
+	shellApp.parsePath(path) // parse PATH and store those in shellApp
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
@@ -44,24 +35,33 @@ func main() {
 		if !scanner.Scan() {
 			break
 		}
-		err := app.processInput(scanner.Text())
+		err := shellApp.processInput(scanner.Text())
 		if err != nil {
-			fmt.Printf("%v", err)
+			fmt.Printf("%v\n", err)
 		}
 	}
 }
 
 // get input break commands and arg and
-func (a *app) processInput(s string) error {
-	cmd, args, found := strings.Cut(s, " ")
+func (a *shellApplication) processInput(s string) error {
+
+	cmd, args, found := strings.Cut(s, " ") // split cmd and args
 	if !found {
-		cmd = s // only single command no args
+		cmd = s // single cmd found
 	}
 
-	// try and find the command in the map
-	f, ok := a.commands[cmd]
+	f, ok := a.builtins[cmd]
 	if !ok {
-		return fmt.Errorf("%s: command not found\n", s)
+		path := a.findExePath(cmd) // determine if cmd is in PATH
+		if path == "" {
+			return fmt.Errorf("%s: command not found\n", s) // command not found and is not builtin return err and start from scratch
+		}
+
+		err := a.executeCommand(cmd, args) // exec command
+		if err != nil {
+			fmt.Printf("error running %s: %v\n", cmd, err)
+		}
+		return nil // return as we ran the command
 	}
 
 	// if found run the command
@@ -72,29 +72,33 @@ func (a *app) processInput(s string) error {
 	return nil
 }
 
-func (a *app) registerCommands() {
-	a.commands["exit"] = func(s ...string) error {
+func (a *shellApplication) registerBuiltins() {
+	a.builtins["exit"] = func(s ...string) error {
 		os.Exit(0)
 		return nil
 	}
-	a.commands["echo"] = func(s ...string) error {
+	a.builtins["echo"] = func(s ...string) error {
 		for _, x := range s {
 			fmt.Printf("%s", x)
 		}
 		fmt.Print("\n")
 		return nil
 	}
-	a.commands["type"] = func(s ...string) error {
-		// iterate through s
-		for _, x := range s {
-			// look for built in commands
-			_, ok := a.commands[x]
-			if !ok {
-				// look for executable
-				found := a.findExe(x)
-				if !found {
+	a.builtins["type"] = func(s ...string) error {
+		for _, x := range s { // loop through args
+			if x == "" {
+				return fmt.Errorf("type requires one or more arguments") // stop empty type commands
+			}
+
+			_, found := a.builtins[x] // look for built in commands
+			if !found {
+				// look for executable in PATH
+
+				path := a.findExePath(x)
+				if path == "" {
 					return fmt.Errorf("%s: not found\n", x)
 				}
+				fmt.Printf("%s is %s\n", x, path)
 				return nil
 			}
 			fmt.Printf("%s is a shell builtin\n", x)
@@ -103,8 +107,8 @@ func (a *app) registerCommands() {
 	}
 }
 
-// fetches all directory in path
-func (a *app) parsePath(s string) {
+// fetches all directories in PATH
+func (a *shellApplication) parsePath(s string) {
 	seperator := os.PathListSeparator
 	folders := strings.SplitSeq(s, string(seperator))
 	for f := range folders {
@@ -112,43 +116,25 @@ func (a *app) parsePath(s string) {
 	}
 }
 
-// loop through all files in the folder list, determine if the folder has execute permissions
-// if it does write command is <full path> else skip
-// ex.. $type grep => grep is /usr/bin/grep
-func (a *app) findExecutables(cmd string) bool {
-
-	// iter through each path and search for exe
-	for _, dir := range a.paths {
-		direntry, err := os.ReadDir(dir)
-		if err != nil {
-			return false
-		}
-
-		// iter through each file
-		for _, f := range direntry {
-			if !f.IsDir() && f.Name() == cmd { // not directory & name matches cmd
-				fileInfo, err := f.Info()
-				if err != nil {
-					return false
-				}
-				// is executable and matches command
-				if IsExecAll(fileInfo.Mode()) {
-					fmt.Printf("%s is %s/%s\n", cmd, dir, cmd) // output: type cat => cat is /bin/cat
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-func (a *app) findExe(cmd string) bool {
+// looks for an executable in the PATH and returns the path of the EXE
+// example return for 'ls' is `/bin/ls`
+func (a *shellApplication) findExePath(cmd string) string {
 	path, err := exec.LookPath(cmd)
 	if err != nil {
-		return false
+		return ""
 	}
-	fmt.Printf("%s is %s\n", cmd, path)
-	return true
+	return path
+}
+
+func (a *shellApplication) executeCommand(cmd, args string) error {
+	execCmd := exec.Command(cmd, args)
+	bytes, err := execCmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
+	fmt.Print(string(bytes))
+
+	return nil
 }
 
 func IsExecAll(mode os.FileMode) bool {
