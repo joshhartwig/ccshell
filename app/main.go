@@ -98,7 +98,7 @@ func (a *shellApplication) registerBuiltins() {
 
 				path := a.findExePath(x)
 				if path == "" {
-					return fmt.Errorf("%s: not found\n", x)
+					return fmt.Errorf("%s: not found", x)
 				}
 				fmt.Printf("%s is %s\n", x, path)
 				return nil
