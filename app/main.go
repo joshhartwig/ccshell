@@ -126,8 +126,8 @@ func (a *shellApplication) findExePath(cmd string) string {
 	return path
 }
 
-func (a *shellApplication) executeCommand(cmd, args string) error {
-	execCmd := exec.Command(cmd, args)
+func (a *shellApplication) executeCommand(cmd string, args ...string) error {
+	execCmd := exec.Command(cmd, args...)
 	bytes, err := execCmd.CombinedOutput()
 	if err != nil {
 		return err
