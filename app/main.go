@@ -50,6 +50,8 @@ func (a *shellApplication) processInput(s string) error {
 		cmd = s // single cmd found
 	}
 
+	splitArgs := strings.Split(args, " ")
+
 	f, ok := a.builtins[cmd]
 	if !ok {
 		path := a.findExePath(cmd) // determine if cmd is in PATH
@@ -57,7 +59,7 @@ func (a *shellApplication) processInput(s string) error {
 			return fmt.Errorf("%s: command not found\n", s) // command not found and is not builtin return err and start from scratch
 		}
 
-		err := a.executeCommand(cmd, args) // exec command
+		err := a.executeCommand(cmd, splitArgs...) // exec command
 		if err != nil {
 			fmt.Printf("error running %s: %v\n", cmd, err)
 		}
