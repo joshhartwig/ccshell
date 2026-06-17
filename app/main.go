@@ -79,6 +79,14 @@ func (a *shellApplication) registerBuiltins() {
 		os.Exit(0)
 		return nil
 	}
+	a.builtins["pwd"] = func(s ...string) error {
+		dir, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s\n", dir)
+		return nil
+	}
 	a.builtins["echo"] = func(s ...string) error {
 		for _, x := range s {
 			fmt.Printf("%s", x)
