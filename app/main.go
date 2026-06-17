@@ -56,7 +56,7 @@ func (a *shellApplication) processInput(s string) error {
 	if !ok {
 		path := a.findExePath(cmd) // determine if cmd is in PATH
 		if path == "" {
-			return fmt.Errorf("%s: command not found\n", s) // command not found and is not builtin return err and start from scratch
+			return fmt.Errorf("%s: command not found", s) // command not found and is not builtin return err and start from scratch
 		}
 
 		err := a.executeCommand(cmd, splitArgs...) // exec command
