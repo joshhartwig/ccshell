@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -13,21 +12,13 @@ import (
 var _ = fmt.Print
 
 type shellApplication struct {
-	builtins map[string]func(s ...string) error //command and associate functions
-	paths    []string                           // used to access PATH folders
+	builtins   map[string]func(s ...string) error //command and associate functions
+	paths      []string                           // used to access PATH folders
+	workingDir string
 }
 
 func main() {
-	var shellApp shellApplication
-	shellApp.builtins = make(map[string]func(s ...string) error)
-	shellApp.registerBuiltins()
-
-	path := os.Getenv("PATH")
-	if path == "" {
-		log.Panic("error path value empty")
-	}
-
-	shellApp.parsePath(path) // parse PATH and store those in shellApp
+	shellApp := New()
 
 	scanner := bufio.NewScanner(os.Stdin)
 	for {
@@ -44,7 +35,6 @@ func main() {
 
 // get input break commands and arg and
 func (a *shellApplication) processInput(s string) error {
-
 	cmd, args, found := strings.Cut(s, " ") // split cmd and args
 	if !found {
 		cmd = s // single cmd found
@@ -75,25 +65,15 @@ func (a *shellApplication) processInput(s string) error {
 }
 
 func (a *shellApplication) registerBuiltins() {
-	a.builtins["exit"] = func(s ...string) error {
-		os.Exit(0)
-		return nil
-	}
+	a.builtins["exit"] = exitHandler
 	a.builtins["pwd"] = func(s ...string) error {
-		dir, err := os.Getwd()
-		if err != nil {
-			return err
+		if a.workingDir == "" {
+			return fmt.Errorf("invalid working directory")
 		}
-		fmt.Printf("%s\n", dir)
+		fmt.Printf("%s\n", a.workingDir)
 		return nil
 	}
-	a.builtins["echo"] = func(s ...string) error {
-		for _, x := range s {
-			fmt.Printf("%s", x)
-		}
-		fmt.Print("\n")
-		return nil
-	}
+	a.builtins["echo"] = echoHandler
 	a.builtins["type"] = func(s ...string) error {
 		for _, x := range s { // loop through args
 			if x == "" {
@@ -113,6 +93,25 @@ func (a *shellApplication) registerBuiltins() {
 			}
 			fmt.Printf("%s is a shell builtin\n", x)
 		}
+		return nil
+	}
+	a.builtins["cd"] = func(s ...string) error {
+		path := s[0]
+		if !strings.HasPrefix(path, "/") {
+			return fmt.Errorf("cd: %s: no such file or folder", path)
+		}
+		if path == "" {
+			return fmt.Errorf("path is empty")
+		}
+
+		_, err := os.ReadDir(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("cd: %s: No such file or directory", path)
+			}
+			return err
+		}
+		a.workingDir = path
 		return nil
 	}
 }
@@ -149,4 +148,20 @@ func (a *shellApplication) executeCommand(cmd string, args ...string) error {
 
 func IsExecAll(mode os.FileMode) bool {
 	return mode&0111 == 0111
+}
+
+func New() *shellApplication {
+	s := shellApplication{
+		builtins: make(map[string]func(s ...string) error),
+		paths:    make([]string, 0),
+	}
+
+	s.registerBuiltins()
+	wd, _ := os.Getwd()
+	s.workingDir = wd
+
+	path := os.Getenv("PATH")
+	s.parsePath(path)
+
+	return &s
 }
