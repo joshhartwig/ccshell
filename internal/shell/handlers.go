@@ -98,6 +98,16 @@ func (sh *Shell) changeDirHandler(s ...string) error {
 func (sh *Shell) revisedChangeDirHandler(s ...string) error {
 	path := s[0]
 
+	if path == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return err
+		}
+
+		err = os.Chdir(home)
+		return nil
+	}
+
 	err := os.Chdir(path)
 	if err != nil {
 		if os.IsNotExist(err) {
