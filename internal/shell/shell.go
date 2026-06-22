@@ -55,7 +55,7 @@ func (sh *Shell) registerBuiltins() {
 	sh.Builtins["pwd"] = sh.pwdHandler
 	sh.Builtins["echo"] = sh.echoHandler
 	sh.Builtins["type"] = sh.typeHandler
-	sh.Builtins["cd"] = sh.revisedChangeDirHandler
+	sh.Builtins["cd"] = sh.changeDirHandler
 }
 
 func (sh *Shell) ProcessInput() {
@@ -75,7 +75,11 @@ func (sh *Shell) ProcessInput() {
 			cmd = scanner.Text() // single cmd found
 		}
 
-		splitArgs := strings.Split(args, " ")
+		// check if the args are quoted before splitting
+		var splitArgs []string
+		if !strings.HasPrefix(args, "'") && !strings.HasSuffix(args, "'") {
+			splitArgs = strings.Split(args, " ")
+		}
 
 		f, ok := sh.Builtins[cmd]
 		if !ok {

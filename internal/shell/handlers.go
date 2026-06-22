@@ -3,8 +3,6 @@ package shell
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 )
 
 // exits the shell
@@ -55,47 +53,7 @@ func (sh *Shell) typeHandler(s ...string) error {
 	return nil
 }
 
-// changes current directory, supports absolute or relative paths
 func (sh *Shell) changeDirHandler(s ...string) error {
-	path := s[0]
-
-	// change dir relative to path
-	if strings.HasPrefix(path, "./") {
-		wantPath := strings.TrimPrefix(path, ".")
-		current, err := os.Getwd()
-		if err != nil {
-			return err
-		}
-		joined := filepath.Join(current, wantPath)
-		err = os.Chdir(joined)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	// absolute path
-	if strings.HasPrefix(path, "/") {
-		// change dir
-		err := os.Chdir(path)
-		if err != nil {
-			if os.IsNotExist(err) {
-				return fmt.Errorf("cd: %s: No such file or directory", path)
-			}
-			return err
-		}
-		sh.WorkingDir = path
-	}
-
-	// relative path
-	if strings.HasPrefix(path, ".") {
-
-	}
-
-	return nil
-}
-
-func (sh *Shell) revisedChangeDirHandler(s ...string) error {
 	path := s[0]
 
 	if path == "~" {
