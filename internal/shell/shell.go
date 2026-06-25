@@ -61,9 +61,7 @@ func (sh *Shell) registerBuiltins() {
 func (sh *Shell) ProcessInput() {
 
 	scanner := bufio.NewScanner(sh.reader)
-
-	// keep looping and getting input
-	for {
+	for { // keep looping and getting input
 		fmt.Fprint(sh.writer, "$ ")
 		if !scanner.Scan() {
 			break
@@ -77,8 +75,13 @@ func (sh *Shell) ProcessInput() {
 
 		// check if the args are quoted before splitting
 		var splitArgs []string
-		if !strings.HasPrefix(args, "'") && !strings.HasSuffix(args, "'") {
-			splitArgs = strings.Split(args, " ")
+		if !strings.HasPrefix(args, "'") && !strings.HasSuffix(args, "'") { // if the args do not start with single quote, split with space
+			splitArgs = strings.Split(args, " ") // split the args into an array
+		} else {
+			pre, _ := strings.CutPrefix(args, "'")
+			post, _ := strings.CutSuffix(pre, "'")
+			fmt.Println("adding post to splitargs", post)
+			splitArgs = append(splitArgs, post)
 		}
 
 		f, ok := sh.Builtins[cmd]
@@ -97,7 +100,7 @@ func (sh *Shell) ProcessInput() {
 		}
 
 		// if found run the command
-		err := f(args)
+		err := f(splitArgs...)
 		if err != nil {
 			fmt.Fprintf(sh.writer, "%v\n", err)
 		}
