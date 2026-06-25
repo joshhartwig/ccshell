@@ -80,7 +80,6 @@ func (sh *Shell) ProcessInput() {
 		} else {
 			pre, _ := strings.CutPrefix(args, "'")
 			post, _ := strings.CutSuffix(pre, "'")
-			fmt.Println("adding post to splitargs", post)
 			splitArgs = append(splitArgs, post)
 		}
 
