@@ -24,10 +24,7 @@ func (sh *Shell) pwdHandler(s ...string) error {
 // echos text provided to echo command
 func (sh *Shell) echoHandler(args ...string) error {
 	for _, c := range args {
-		if c != "" {
-			fmt.Fprintf(sh.writer, "%s ", c)
-		}
-
+		fmt.Fprintf(sh.writer, "%s", c)
 	}
 	fmt.Fprintln(sh.writer, "")
 	return nil
