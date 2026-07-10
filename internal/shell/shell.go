@@ -44,11 +44,6 @@ func New(r io.Reader, w io.Writer) *Shell {
 	return &s
 }
 
-// returns true is file is executable
-func isExec(mode os.FileMode) bool {
-	return mode&0111 == 0111
-}
-
 // registers commands for the shell
 func (sh *Shell) registerBuiltins() {
 	sh.Builtins["exit"] = sh.exitHandler
@@ -59,58 +54,41 @@ func (sh *Shell) registerBuiltins() {
 }
 
 func (sh *Shell) ProcessInput() {
-
 	scanner := bufio.NewScanner(sh.reader)
-	for { // keep looping and getting input
+
+	// keep looping and getting input
+	for {
 		fmt.Fprint(sh.writer, "$ ")
 		if !scanner.Scan() {
 			break
 		}
 
-		// split cmd, args if both space if found between words
-		// cmd, args, found := strings.Cut(scanner.Text(), " ") // split cmd and args
-		// if !found {
-		// 	cmd = scanner.Text() // single cmd found
-		// }
-
+		// fetch input and parse into tokens
 		line := scanner.Text()
 		tokens := parse(line)
 
-		if len(tokens) == 0 {
+		if len(tokens) == 0 { // if empty continue
 			continue
 		}
 
-		cmd := tokens[0]
-		args := tokens[1:]
-
-		// check if the args are quoted before splitting
-		//var splitArgs = parse(args)
-		//fmt.Printf("splitargs: %v", splitArgs)
-		// if strings.HasPrefix(args, "'") && strings.HasSuffix(args, "'") { // if the args do not start with single quote, split with space
-		// 	pre, _ := strings.CutPrefix(args, "'")
-		// 	post, _ := strings.CutSuffix(pre, "'")
-		// 	splitArgs = append(splitArgs, post)
-		// } else {
-		// 	splitArgs = strings.Split(args, " ") // split the args into an array
-		// }
-
-		f, ok := sh.Builtins[cmd]
+		f, ok := sh.Builtins[tokens[0]]
 		if !ok {
-			path := sh.findExePath(cmd) // determine if cmd is in PATH
+			// if not found determine if the command is in PATH
+			path := sh.findExePath(tokens[0])
 			if path == "" {
 				fmt.Fprintf(sh.writer, "%s: command not found\n", scanner.Text()) // command not found and is not builtin return err and start from scratch
 				continue
 			}
 
-			err := sh.executeCommand(cmd, args...) // exec command
+			err := sh.executeCommand(tokens[0], tokens[1:]...) // exec command
 			if err != nil {
-				fmt.Fprintf(sh.writer, "error running %s: %v\n", cmd, err)
+				fmt.Fprintf(sh.writer, "error running %s: %v\n", tokens[0], err)
 			}
 			continue
 		}
 
 		// if found run the command
-		err := f(args...)
+		err := f(tokens[1:]...)
 		if err != nil {
 			fmt.Fprintf(sh.writer, "%v\n", err)
 		}

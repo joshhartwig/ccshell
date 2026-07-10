@@ -51,6 +51,11 @@ func TestParse(t *testing.T) {
 			input: "'shell example'",
 			want:  []string{"shell example"},
 		},
+		{
+			name:  "echo ",
+			input: "echo test     shell",
+			want:  []string{"echo test shell"},
+		},
 	}
 
 	for _, tt := range tests {
