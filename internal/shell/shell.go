@@ -68,13 +68,24 @@ func (sh *Shell) ProcessInput() {
 		}
 
 		// split cmd, args if both space if found between words
-		cmd, args, found := strings.Cut(scanner.Text(), " ") // split cmd and args
-		if !found {
-			cmd = scanner.Text() // single cmd found
+		// cmd, args, found := strings.Cut(scanner.Text(), " ") // split cmd and args
+		// if !found {
+		// 	cmd = scanner.Text() // single cmd found
+		// }
+
+		line := scanner.Text()
+		tokens := parse(line)
+
+		if len(tokens) == 0 {
+			continue
 		}
 
+		cmd := tokens[0]
+		args := tokens[1:]
+
 		// check if the args are quoted before splitting
-		var splitArgs = parse(args)
+		//var splitArgs = parse(args)
+		//fmt.Printf("splitargs: %v", splitArgs)
 		// if strings.HasPrefix(args, "'") && strings.HasSuffix(args, "'") { // if the args do not start with single quote, split with space
 		// 	pre, _ := strings.CutPrefix(args, "'")
 		// 	post, _ := strings.CutSuffix(pre, "'")
@@ -91,7 +102,7 @@ func (sh *Shell) ProcessInput() {
 				continue
 			}
 
-			err := sh.executeCommand(cmd, splitArgs...) // exec command
+			err := sh.executeCommand(cmd, args...) // exec command
 			if err != nil {
 				fmt.Fprintf(sh.writer, "error running %s: %v\n", cmd, err)
 			}
@@ -99,7 +110,7 @@ func (sh *Shell) ProcessInput() {
 		}
 
 		// if found run the command
-		err := f(splitArgs...)
+		err := f(args...)
 		if err != nil {
 			fmt.Fprintf(sh.writer, "%v\n", err)
 		}
