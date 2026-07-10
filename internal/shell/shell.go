@@ -74,13 +74,13 @@ func (sh *Shell) ProcessInput() {
 		}
 
 		// check if the args are quoted before splitting
-		var splitArgs []string
-		if !strings.HasPrefix(args, "'") && !strings.HasSuffix(args, "'") { // if the args do not start with single quote, split with space
-			splitArgs = strings.Split(args, " ") // split the args into an array
-		} else {
+		var splitArgs = parse(args)
+		if strings.HasPrefix(args, "'") && strings.HasSuffix(args, "'") { // if the args do not start with single quote, split with space
 			pre, _ := strings.CutPrefix(args, "'")
 			post, _ := strings.CutSuffix(pre, "'")
 			splitArgs = append(splitArgs, post)
+		} else {
+			splitArgs = strings.Split(args, " ") // split the args into an array
 		}
 
 		f, ok := sh.Builtins[cmd]
@@ -131,4 +131,51 @@ func (sh *Shell) executeCommand(cmd string, args ...string) error {
 	}
 	fmt.Fprint(sh.writer, string(bytes))
 	return nil
+}
+
+func parse(input string) []string {
+	const (
+		modeUnquoted = iota
+		modeSingleQuoted
+	)
+	const spaceRune rune = ' '
+	const singleQuoteRune rune = '\''
+
+	mode := modeUnquoted
+	spaceDelim := false
+	tokens := []string{}
+	token := []rune{}
+
+	for _, c := range input {
+		if mode == modeSingleQuoted { // in single quote mode
+			if c == singleQuoteRune { // last singleq
+				mode = modeUnquoted
+				continue
+			}
+			token = append(token, c)
+			continue
+		}
+		if c == singleQuoteRune { // starting singleq
+			mode = modeSingleQuoted
+			continue
+		}
+
+		if c == spaceRune {
+			if spaceDelim {
+				tokens = append(tokens, string(token)) // append word
+				token = token[:0]                      // reset word
+				spaceDelim = false
+				continue
+			}
+			continue
+		}
+		token = append(token, c)
+		spaceDelim = true // ignore space until we hit
+	}
+
+	if len(token) > 0 {
+		tokens = append(tokens, string(token))
+	}
+
+	return tokens
 }
