@@ -75,13 +75,13 @@ func (sh *Shell) ProcessInput() {
 
 		// check if the args are quoted before splitting
 		var splitArgs = parse(args)
-		if strings.HasPrefix(args, "'") && strings.HasSuffix(args, "'") { // if the args do not start with single quote, split with space
-			pre, _ := strings.CutPrefix(args, "'")
-			post, _ := strings.CutSuffix(pre, "'")
-			splitArgs = append(splitArgs, post)
-		} else {
-			splitArgs = strings.Split(args, " ") // split the args into an array
-		}
+		// if strings.HasPrefix(args, "'") && strings.HasSuffix(args, "'") { // if the args do not start with single quote, split with space
+		// 	pre, _ := strings.CutPrefix(args, "'")
+		// 	post, _ := strings.CutSuffix(pre, "'")
+		// 	splitArgs = append(splitArgs, post)
+		// } else {
+		// 	splitArgs = strings.Split(args, " ") // split the args into an array
+		// }
 
 		f, ok := sh.Builtins[cmd]
 		if !ok {

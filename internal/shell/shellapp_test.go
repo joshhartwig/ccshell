@@ -46,6 +46,11 @@ func TestParse(t *testing.T) {
 			input: "'hi''mom'",
 			want:  []string{"himom"},
 		},
+		{
+			name:  "shell example",
+			input: "'shell example'",
+			want:  []string{"shell example"},
+		},
 	}
 
 	for _, tt := range tests {
