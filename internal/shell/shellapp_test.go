@@ -52,9 +52,19 @@ func TestParse(t *testing.T) {
 			want:  []string{"shell example"},
 		},
 		{
-			name:  "echo ",
+			name:  "echo",
 			input: "echo test     shell",
-			want:  []string{"echo test shell"},
+			want:  []string{"echo", "test", "shell"},
+		},
+		{
+			name:  "start with quote",
+			input: "echo 'hello world' hello",
+			want:  []string{"echo", "hello world", "hello"},
+		},
+		{
+			name:  "mixed spaces and single quotes",
+			input: "echo 'test     hello' 'world''shell' example''script",
+			want:  []string{"echo", "test     hello", "worldshell", "examplescript"},
 		},
 	}
 
@@ -62,7 +72,7 @@ func TestParse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := parse(tt.input)
 			if slices.Compare(got, tt.want) != 0 {
-				t.Errorf("wanted %v got %v", tt.want, got)
+				t.Errorf("wanted:%v len:%d got:%v len:%d", tt.want, len(tt.want), got, len(got))
 			}
 		})
 	}

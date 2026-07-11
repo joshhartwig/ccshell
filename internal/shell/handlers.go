@@ -24,7 +24,7 @@ func (sh *Shell) pwdHandler(s ...string) error {
 // echos text provided to echo command
 func (sh *Shell) echoHandler(args ...string) error {
 	for i, c := range args {
-		if i == len(args) {
+		if i == len(args)-1 {
 			fmt.Fprintf(sh.writer, "%s", c) // print final no space
 		} else {
 			fmt.Fprintf(sh.writer, "%s ", c) // print w/ space

@@ -142,8 +142,10 @@ func parse(input string) []string {
 				continue
 			}
 			token = append(token, c)
+			spaceDelim = true
 			continue
 		}
+
 		if c == singleQuoteRune { // starting singleq
 			mode = modeSingleQuoted
 			continue
