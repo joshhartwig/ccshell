@@ -122,15 +122,20 @@ func (sh *Shell) executeCommand(cmd string, args ...string) error {
 	return nil
 }
 
+// add backslash support makes next char literal
+// /<space> adds space and does not split
+// echo \'hello\' => 'hello'
 func parse(input string) []string {
 	const (
 		modeUnquoted = iota
 		modeSingleQuoted
 		modeDoubleQuoted
+		modeEscape
 	)
 	const spaceRune rune = ' '
 	const singleQuoteRune rune = '\''
 	const doubleQuotedRune rune = '"'
+	const backslashRune rune = '\\'
 
 	mode := modeUnquoted
 	spaceDelim := false
@@ -183,10 +188,13 @@ func parse(input string) []string {
 			}
 			continue
 		}
+
+		// append the token to tokens
 		token = append(token, c)
 		spaceDelim = true // ignore space until we hit
 	}
 
+	// append last token before return
 	if len(token) > 0 {
 		tokens = append(tokens, string(token))
 	}
