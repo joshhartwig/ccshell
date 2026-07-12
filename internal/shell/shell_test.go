@@ -24,23 +24,4 @@ func TestNew(t *testing.T) {
 			t.Errorf("want: %s got: %s", want, got)
 		}
 	})
-
-	t.Run("test arg parsing", func(t *testing.T) {
-		input := new(bytes.Buffer)
-		input.WriteString(`echo 'world     hello' 'script''shell' `)
-
-		output := new(bytes.Buffer)
-		shell := New(input, output)
-		shell.ProcessInput()
-
-		want := "$ world     hello scriptshell exampletest"
-		got, err := output.ReadString('\n')
-		if err != nil {
-			t.Errorf("error processing output: %v", err)
-		}
-
-		if got != want {
-			t.Errorf("want: %s\n got: %s\n", want, got)
-		}
-	})
 }

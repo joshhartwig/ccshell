@@ -66,6 +66,33 @@ func TestParse(t *testing.T) {
 			input: "echo 'test     hello' 'world''shell' example''script",
 			want:  []string{"echo", "test     hello", "worldshell", "examplescript"},
 		},
+
+		// double quote tests
+		{
+			name:  "double quotes with multiple spaces",
+			input: `echo "hello    world"`,
+			want:  []string{"echo", "hello    world"},
+		},
+		{
+			name:  "adjacent double quoted strings are concatenated",
+			input: `echo "hello""world"`,
+			want:  []string{"echo", "helloworld"},
+		},
+		{
+			name:  "double quoted and unquoted strings are concatenated",
+			input: `echo "hello"world`,
+			want:  []string{"echo", "helloworld"},
+		},
+		{
+			name:  "double quoted strings separated by space",
+			input: `echo "hello" "world"`,
+			want:  []string{"echo", "hello", "world"},
+		},
+		{
+			name:  "single quotes inside double quotes are literal",
+			input: `echo "shell's test"`,
+			want:  []string{"echo", "shell's test"},
+		},
 	}
 
 	for _, tt := range tests {

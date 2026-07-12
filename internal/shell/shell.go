@@ -126,9 +126,11 @@ func parse(input string) []string {
 	const (
 		modeUnquoted = iota
 		modeSingleQuoted
+		modeDoubleQuoted
 	)
 	const spaceRune rune = ' '
 	const singleQuoteRune rune = '\''
+	const doubleQuotedRune rune = '"'
 
 	mode := modeUnquoted
 	spaceDelim := false
@@ -136,13 +138,34 @@ func parse(input string) []string {
 	token := []rune{}
 
 	for _, c := range input {
-		if mode == modeSingleQuoted { // in single quote mode
-			if c == singleQuoteRune { // last singleq
+
+		// in single quote mode
+		if mode == modeSingleQuoted {
+			// if last single quote
+			if c == singleQuoteRune {
 				mode = modeUnquoted
 				continue
 			}
 			token = append(token, c)
 			spaceDelim = true
+			continue
+		}
+
+		// in double quoted mode
+		if mode == modeDoubleQuoted {
+			// last double quote
+			if c == doubleQuotedRune {
+				mode = modeUnquoted
+				continue
+			}
+			token = append(token, c)
+			spaceDelim = true
+			continue
+		}
+
+		// found first double quote
+		if c == doubleQuotedRune {
+			mode = modeDoubleQuoted
 			continue
 		}
 
