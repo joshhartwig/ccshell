@@ -118,6 +118,11 @@ func TestParse(t *testing.T) {
 			input: `echo \'hello\'`,
 			want:  []string{"echo", "'hello'"},
 		},
+		{
+			name:  "double quotes part 1",
+			input: `echo "hello'test'\\'world"`,
+			want:  []string{"echo", `hello'test'\'world`},
+		},
 	}
 
 	for _, tt := range tests {

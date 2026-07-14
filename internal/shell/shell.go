@@ -137,6 +137,10 @@ func parse(input string) []string {
 	const doubleQuotedRune rune = '"'
 	const backslashRune rune = '\\'
 
+	// this needs to be outside of iota as escaping can happen
+	// inside double quoted text
+	escapeMode := false
+
 	mode := modeUnquoted
 	spaceDelim := false
 	tokens := []string{}
