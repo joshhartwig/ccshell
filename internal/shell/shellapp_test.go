@@ -93,6 +93,31 @@ func TestParse(t *testing.T) {
 			input: `echo "shell's test"`,
 			want:  []string{"echo", "shell's test"},
 		},
+		{
+			name:  "escaping spaces",
+			input: `echo three\ \ \ spaces`,
+			want:  []string{"echo", "three   spaces"},
+		},
+		{
+			name:  "escaping spaces more complex",
+			input: `echo before\     after`,
+			want:  []string{"echo", "before ", "after"},
+		},
+		{
+			name:  "backslash-n becomes just n",
+			input: `echo test\nexample`,
+			want:  []string{"echo", "testnexample"},
+		},
+		{
+			name:  "escaped backslash is literal",
+			input: `echo hello\\world`,
+			want:  []string{"echo", "hello\\world"},
+		},
+		{
+			name:  "escaped single quotes are literal",
+			input: `echo \'hello\'`,
+			want:  []string{"echo", "'hello'"},
+		},
 	}
 
 	for _, tt := range tests {

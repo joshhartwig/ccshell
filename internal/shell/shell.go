@@ -124,13 +124,13 @@ func (sh *Shell) executeCommand(cmd string, args ...string) error {
 
 // add backslash support makes next char literal
 // /<space> adds space and does not split
-// echo \'hello\' => 'hello'
+// echo hello\\world
 func parse(input string) []string {
 	const (
 		modeUnquoted = iota
 		modeSingleQuoted
 		modeDoubleQuoted
-		modeEscape
+		modeEscaped
 	)
 	const spaceRune rune = ' '
 	const singleQuoteRune rune = '\''
@@ -168,18 +168,24 @@ func parse(input string) []string {
 			continue
 		}
 
+		// if we hit an escape character set to escape mode
+		if c == backslashRune && mode != modeEscaped {
+			mode = modeEscaped
+			continue
+		}
+
 		// found first double quote
-		if c == doubleQuotedRune {
+		if c == doubleQuotedRune && mode != modeEscaped {
 			mode = modeDoubleQuoted
 			continue
 		}
 
-		if c == singleQuoteRune { // starting singleq
+		if c == singleQuoteRune && mode != modeEscaped { // starting singleq
 			mode = modeSingleQuoted
 			continue
 		}
 
-		if c == spaceRune {
+		if c == spaceRune && mode != modeEscaped {
 			if spaceDelim {
 				tokens = append(tokens, string(token)) // append word
 				token = token[:0]                      // reset word
@@ -192,6 +198,7 @@ func parse(input string) []string {
 		// append the token to tokens
 		token = append(token, c)
 		spaceDelim = true // ignore space until we hit
+		mode = modeUnquoted
 	}
 
 	// append last token before return
