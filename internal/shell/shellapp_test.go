@@ -158,6 +158,11 @@ func TestParse(t *testing.T) {
 			input: `echo "backslash \\ 3"`,
 			want:  []string{"echo", `backslash \ 3`},
 		},
+		{
+			name:  "mixed escape and quotes",
+			input: `echo "mixed\"quote'script'\\"`,
+			want:  []string{"echo", `mixed"quote'script'\`},
+		},
 	}
 
 	for _, tt := range tests {

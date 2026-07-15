@@ -166,8 +166,9 @@ func parse(input string) []string {
 		if mode == modeDoubleQuoted {
 			// last double quote & reset to unquoted
 			if escapeMode {
-				if c == doubleQuotedRune || c == backslashRune || c == dollarRune || c == asteriskRune || c == newlineRune {
+				if c == doubleQuotedRune || c == singleQuoteRune || c == backslashRune || c == dollarRune || c == asteriskRune || c == newlineRune {
 					token = append(token, c)
+					escapeMode = false
 					continue
 				}
 			}
