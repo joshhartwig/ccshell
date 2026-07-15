@@ -135,6 +135,9 @@ func parse(input string) []string {
 	const singleQuoteRune rune = '\''
 	const doubleQuotedRune rune = '"'
 	const backslashRune rune = '\\'
+	const dollarRune rune = '$'
+	const asteriskRune rune = '*'
+	const newlineRune rune = '\n'
 
 	// this needs to be outside of iota as escaping can happen
 	// inside double quoted text
@@ -162,7 +165,12 @@ func parse(input string) []string {
 		// in double quoted mode
 		if mode == modeDoubleQuoted {
 			// last double quote & reset to unquoted
-
+			if escapeMode {
+				if c == doubleQuotedRune || c == backslashRune || c == dollarRune || c == asteriskRune || c == newlineRune {
+					token = append(token, c)
+					continue
+				}
+			}
 			if c == doubleQuotedRune {
 				mode = modeUnquoted
 				continue
