@@ -123,6 +123,41 @@ func TestParse(t *testing.T) {
 			input: `echo "hello'test'\\'world"`,
 			want:  []string{"echo", `hello'test'\'world`},
 		},
+		{
+			name:  "escaped backslash in double quotes",
+			input: `echo "A \\ escapes itself"`,
+			want:  []string{"echo", `A \ escapes itself`},
+		},
+		{
+			name:  "escaped double quote in double quotes",
+			input: `echo "A \" inside double quotes"`,
+			want:  []string{"echo", `A " inside double quotes`},
+		},
+		{
+			name:  "single quotes and backslash in double quotes",
+			input: `echo "just'one'\\n'backslash"`,
+			want:  []string{"echo", `just'one'\n'backslash`},
+		},
+		{
+			name:  "escaped double quote outside double quotes",
+			input: `echo "inside\"literal_quote."outside\"`,
+			want:  []string{"echo", `inside"literal_quote.outside"`},
+		},
+		{
+			name:  "backslash and double quote in double quotes part 1",
+			input: `echo "number 1"`,
+			want:  []string{"echo", `number 1`},
+		},
+		{
+			name:  "backslash and double quote in double quotes part 2",
+			input: `echo "doublequote \" 2"`,
+			want:  []string{"echo", `doublequote " 2`},
+		},
+		{
+			name:  "backslash and double quote in double quotes part 3",
+			input: `echo "backslash \\ 3"`,
+			want:  []string{"echo", `backslash \ 3`},
+		},
 	}
 
 	for _, tt := range tests {

@@ -130,7 +130,6 @@ func parse(input string) []string {
 		modeUnquoted = iota
 		modeSingleQuoted
 		modeDoubleQuoted
-		modeEscaped
 	)
 	const spaceRune rune = ' '
 	const singleQuoteRune rune = '\''
@@ -162,34 +161,43 @@ func parse(input string) []string {
 
 		// in double quoted mode
 		if mode == modeDoubleQuoted {
-			// last double quote
+			// last double quote & reset to unquoted
+
 			if c == doubleQuotedRune {
 				mode = modeUnquoted
 				continue
 			}
+
+			if c == backslashRune && escapeMode == false {
+				escapeMode = true
+				continue
+			}
 			token = append(token, c)
 			spaceDelim = true
+			escapeMode = false
 			continue
+
 		}
 
-		// if we hit an escape character set to escape mode
-		if c == backslashRune && mode != modeEscaped {
-			mode = modeEscaped
+		// if we hit an escape character and not in escape mode
+		// set to true
+		if c == backslashRune && escapeMode == false {
+			escapeMode = true
 			continue
 		}
 
 		// found first double quote
-		if c == doubleQuotedRune && mode != modeEscaped {
+		if c == doubleQuotedRune && escapeMode == false {
 			mode = modeDoubleQuoted
 			continue
 		}
 
-		if c == singleQuoteRune && mode != modeEscaped { // starting singleq
+		if c == singleQuoteRune && escapeMode == false { // starting singleq
 			mode = modeSingleQuoted
 			continue
 		}
 
-		if c == spaceRune && mode != modeEscaped {
+		if c == spaceRune && escapeMode == false {
 			if spaceDelim {
 				tokens = append(tokens, string(token)) // append word
 				token = token[:0]                      // reset word
@@ -201,8 +209,10 @@ func parse(input string) []string {
 
 		// append the token to tokens
 		token = append(token, c)
-		spaceDelim = true // ignore space until we hit
+		// reset modes
 		mode = modeUnquoted
+		spaceDelim = true
+		escapeMode = false
 	}
 
 	// append last token before return
