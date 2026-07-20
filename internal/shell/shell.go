@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,6 +16,15 @@ type Shell struct {
 	WorkingDir string                             // keeps track of current working directory
 	reader     io.Reader
 	writer     io.Writer
+}
+
+type pipeline struct {
+	commands []command
+}
+
+type command struct {
+	name string
+	args []string
 }
 
 // fetches all directories in PATH
@@ -67,6 +77,8 @@ func (sh *Shell) ProcessInput() {
 		line := scanner.Text()
 		tokens := parse(line)
 
+		// TODO: convert []tokens to Command struct check if err creating
+		// struct. If len(0)
 		if len(tokens) == 0 { // if empty continue
 			continue
 		}
@@ -230,4 +242,31 @@ func parse(input string) []string {
 	}
 
 	return tokens
+}
+
+// creates a pipeline of commands to exec splitting on | or >
+func createPipeline(input []string) (pipeline, error) {
+	pipeline := pipeline{}
+	cmd := command{}
+
+	if len(input) == 0 {
+		return pipeline, errors.New("input length is zero")
+	}
+	for i, arg := range input {
+		if i == 0 { // first arg is cmd
+			cmd.name = input[i]
+		} else {
+			if arg == ">" { // pipe found append command to pipeline
+				pipeline.commands = append(pipeline.commands, cmd) // append current command
+				cmd = command{                                     // create new command and add arg
+					name: arg,
+				}
+			} else {
+				cmd.args = append(cmd.args, arg)
+			}
+		}
+	}
+	pipeline.commands = append(pipeline.commands, cmd)
+
+	return pipeline, nil
 }

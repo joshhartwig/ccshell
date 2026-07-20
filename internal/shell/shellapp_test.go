@@ -174,3 +174,23 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+func TestCreatePipeline(t *testing.T) {
+	testInput := []string{"cat", "hello world", ">", "test.txt"}
+	want := pipeline{
+		commands: []command{
+			{name: "cat", args: []string{"hello", "world"}},
+			{name: ">", args: []string{"test.txt"}},
+		},
+	}
+
+	got, err := createPipeline(testInput)
+	if err != nil {
+		t.Errorf("got error: %v", err)
+	}
+
+	if len(got.commands) != len(want.commands) {
+		t.Errorf("length should be the same got:%d want:%d", len(got.commands), len(want.commands))
+	}
+
+}
