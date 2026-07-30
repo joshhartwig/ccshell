@@ -1,6 +1,7 @@
 package shell
 
 import (
+	"fmt"
 	"slices"
 	"testing"
 )
@@ -167,7 +168,7 @@ func TestParse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := parse(tt.input)
+			got := ParseLine(tt.input)
 			if slices.Compare(got, tt.want) != 0 {
 				t.Errorf("wanted:%v len:%d got:%v len:%d", tt.want, len(tt.want), got, len(got))
 			}
@@ -178,9 +179,8 @@ func TestParse(t *testing.T) {
 func TestCreatePipeline(t *testing.T) {
 	testInput := []string{"cat", "hello world", ">", "test.txt"}
 	want := pipeline{
-		commands: []command{
-			{name: "cat", args: []string{"hello", "world"}},
-			{name: ">", args: []string{"test.txt"}},
+		stages: []stage{
+			{name: "cat", args: []string{"hello", "world"}, stdOutFile: "test.txt", append: false},
 		},
 	}
 
@@ -189,8 +189,13 @@ func TestCreatePipeline(t *testing.T) {
 		t.Errorf("got error: %v", err)
 	}
 
-	if len(got.commands) != len(want.commands) {
-		t.Errorf("length should be the same got:%d want:%d", len(got.commands), len(want.commands))
+	if len(got.stages) != len(want.stages) {
+		t.Errorf("length should be the same got:%d want:%d", len(got.stages), len(want.stages))
+		fmt.Println(got)
+	}
+
+	if got.stages[0].name != want.stages[0].name {
+		t.Errorf("name should be the same got %s want %s", got.stages[0].name, want.stages[0].name)
 	}
 
 }

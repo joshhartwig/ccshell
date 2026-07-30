@@ -11,7 +11,7 @@ import (
 )
 
 type Shell struct {
-	Builtins   map[string]func(s ...string) error //command and associate functions
+	Builtins   map[string]func(stage stage) error //command and associate functions
 	Paths      []string                           // used to access PATH folders
 	WorkingDir string                             // keeps track of current working directory
 	reader     io.Reader
@@ -19,12 +19,15 @@ type Shell struct {
 }
 
 type pipeline struct {
-	commands []command
+	stages []stage
 }
 
-type command struct {
-	name string
-	args []string
+type stage struct {
+	name       string
+	args       []string
+	stdInFile  string
+	stdOutFile string
+	append     bool
 }
 
 // fetches all directories in PATH
@@ -38,7 +41,7 @@ func (sh *Shell) ParsePath(str string) {
 
 func New(r io.Reader, w io.Writer) *Shell {
 	s := Shell{
-		Builtins: make(map[string]func(s ...string) error),
+		Builtins: make(map[string]func(s stage) error),
 		Paths:    make([]string, 0),
 		reader:   r,
 		writer:   w,
@@ -63,7 +66,7 @@ func (sh *Shell) registerBuiltins() {
 	sh.Builtins["cd"] = sh.changeDirHandler
 }
 
-func (sh *Shell) ProcessInput() {
+func (sh *Shell) Run() {
 	scanner := bufio.NewScanner(sh.reader)
 
 	// keep looping and getting input
@@ -73,38 +76,25 @@ func (sh *Shell) ProcessInput() {
 			break
 		}
 
-		// fetch input and parse into tokens
-		line := scanner.Text()
-		tokens := parse(line)
-
-		// TODO: convert []tokens to Command struct check if err creating
-		// struct. If len(0)
-		if len(tokens) == 0 { // if empty continue
-			continue
-		}
-
-		f, ok := sh.Builtins[tokens[0]]
-		if !ok {
-			// if not found determine if the command is in PATH
-			path := sh.findExePath(tokens[0])
-			if path == "" {
-				fmt.Fprintf(sh.writer, "%s: command not found\n", scanner.Text()) // command not found and is not builtin return err and start from scratch
-				continue
-			}
-
-			err := sh.executeCommand(tokens[0], tokens[1:]...) // exec command
-			if err != nil {
-				fmt.Fprintf(sh.writer, "error running %s: %v\n", tokens[0], err)
-			}
-			continue
-		}
-
-		// if found run the command
-		err := f(tokens[1:]...)
-		if err != nil {
-			fmt.Fprintf(sh.writer, "%v\n", err)
-		}
+		sh.processLine(scanner.Text())
 	}
+
+}
+
+func (sh *Shell) processLine(line string) {
+	tokens := ParseLine(line)
+	pipeline, err := createPipeline(tokens)
+	if err != nil {
+		fmt.Fprint(sh.writer, err)
+		return
+	}
+
+	err = sh.processPipeline(pipeline, line)
+	if err != nil {
+		fmt.Fprint(sh.writer, err)
+		return
+	}
+
 }
 
 // looks for an executable in the PATH and returns the path of the EXE
@@ -117,10 +107,11 @@ func (sh *Shell) findExePath(cmd string) string {
 	return path
 }
 
+// executeCommand takes the command and the args and calls the operating system to execute
 func (sh *Shell) executeCommand(cmd string, args ...string) error {
 
 	var execCmd *exec.Cmd
-	if args[0] == "" {
+	if len(args) == 0 {
 		execCmd = exec.Command(cmd)
 	} else {
 		execCmd = exec.Command(cmd, args...)
@@ -128,16 +119,15 @@ func (sh *Shell) executeCommand(cmd string, args ...string) error {
 
 	bytes, err := execCmd.CombinedOutput()
 	if err != nil {
-		return err
+		return fmt.Errorf("%s", string(bytes))
 	}
-	fmt.Fprint(sh.writer, string(bytes))
+	fmt.Fprintln(sh.writer, string(bytes))
 	return nil
 }
 
-// add backslash support makes next char literal
-// /<space> adds space and does not split
-// echo hello\\world
-func parse(input string) []string {
+// parse takes input from the terminal and processes the tokens splitting on spaces, double quotes
+// and single quotes. Each has distinct rules that dictate how they should be split. See unit tests for more details
+func ParseLine(input string) []string {
 	const (
 		modeUnquoted = iota
 		modeSingleQuoted
@@ -244,29 +234,69 @@ func parse(input string) []string {
 	return tokens
 }
 
-// creates a pipeline of commands to exec splitting on | or >
-func createPipeline(input []string) (pipeline, error) {
+/*
+createPipeline will create a 'pipeline' struct that contains a slice of 'command' structs
+each struct has the command operation and the arguments. For example command.name = 'echo'
+command.args = 'hello world!' 'byeee!'. This is required as we support more complex operations with
+multiple commands like > or |
+*/
+func createPipeline(tokens []string) (pipeline, error) {
 	pipeline := pipeline{}
-	cmd := command{}
+	stage := stage{
+		append: false,
+	}
 
-	if len(input) == 0 {
+	if len(tokens) == 0 {
 		return pipeline, errors.New("input length is zero")
 	}
-	for i, arg := range input {
+
+	outputRedirectSet := false
+	for i, arg := range tokens {
 		if i == 0 { // first arg is cmd
-			cmd.name = input[i]
+			stage.name = tokens[i]
 		} else {
-			if arg == ">" { // pipe found append command to pipeline
-				pipeline.commands = append(pipeline.commands, cmd) // append current command
-				cmd = command{                                     // create new command and add arg
-					name: arg,
-				}
+			if outputRedirectSet {
+				stage.stdOutFile = tokens[i]
+				stage.append = false
+				continue
+			}
+			if arg == ">" || arg == "1>" {
+				outputRedirectSet = true
 			} else {
-				cmd.args = append(cmd.args, arg)
+				stage.args = append(stage.args, arg)
 			}
 		}
 	}
-	pipeline.commands = append(pipeline.commands, cmd)
+	pipeline.stages = append(pipeline.stages, stage)
 
 	return pipeline, nil
+}
+
+func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
+	for _, stage := range pipeline.stages {
+		f, ok := sh.Builtins[stage.name]
+		if !ok {
+			path := sh.findExePath(stage.name)
+			if path == "" {
+				// command not found and is not builtin return err and start from scratch
+				//fmt.Fprintf(sh.writer, "%s: command not found\n", line)
+				return fmt.Errorf("%s: command not found\n", line)
+			}
+
+			err := sh.executeCommand(stage.name, stage.args...) // exec command
+			if err != nil {
+				return err
+			}
+			//continue
+			return nil
+		}
+
+		// execute the command if its part of a shell built in ex 'echo'
+		err := f(stage)
+		if err != nil {
+			//fmt.Fprintf(sh.writer, "%v\n", err)
+			return fmt.Errorf("%v\n", err)
+		}
+	}
+	return nil
 }

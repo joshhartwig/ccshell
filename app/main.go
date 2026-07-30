@@ -11,6 +11,6 @@ import (
 var _ = fmt.Print
 
 func main() {
-	shell := shell.New(os.Stdin, os.Stdout)
-	shell.ProcessInput()
+	sh := shell.New(os.Stdin, os.Stdout)
+	sh.Run()
 }

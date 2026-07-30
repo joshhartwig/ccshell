@@ -1,18 +1,20 @@
 package shell
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 // exits the shell
-func (sh *Shell) exitHandler(s ...string) error {
+func (sh *Shell) exitHandler(s stage) error {
 	os.Exit(0)
 	return nil
 }
 
 // prints current working directory
-func (sh *Shell) pwdHandler(s ...string) error {
+func (sh *Shell) pwdHandler(s stage) error {
 	wd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -22,21 +24,44 @@ func (sh *Shell) pwdHandler(s ...string) error {
 }
 
 // echos text provided to echo command
-func (sh *Shell) echoHandler(args ...string) error {
-	for i, c := range args {
-		if i == len(args)-1 {
-			fmt.Fprintf(sh.writer, "%s", c) // print final no space
+func (sh *Shell) echoHandler(s stage) error {
+	// if stage outputs to a text file write everything here to buffer then to file
+	// overwrite if append = false
+	var buf bytes.Buffer
+	for i, c := range s.args {
+		if i == len(s.args)-1 {
+			//fmt.Fprintf(sh.writer, "%s", c) // print final no space
+			buf.Write([]byte(fmt.Sprintf("%s", c)))
 		} else {
-			fmt.Fprintf(sh.writer, "%s ", c) // print w/ space
+			//fmt.Fprintf(sh.writer, "%s ", c) // print w/ space
+			buf.Write([]byte(fmt.Sprintf("%s ", c)))
 		}
 	}
+
+	// if output file is not empty get cwd
+	if s.stdOutFile != "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		filename := s.stdOutFile
+		filepath := filepath.Join(cwd, filename)
+		err = os.WriteFile(filepath, buf.Bytes(), 0644)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	sh.writer.Write(buf.Bytes())
 	fmt.Fprintln(sh.writer, "")
 	return nil
 }
 
 // returns if a command is built in or the path of the command if not
-func (sh *Shell) typeHandler(s ...string) error {
-	for _, x := range s { // loop through args
+func (sh *Shell) typeHandler(s stage) error {
+	for _, x := range s.args { // loop through args
 		if x == "" {
 			return fmt.Errorf("type requires one or more arguments") // stop empty type commands
 		}
@@ -57,8 +82,8 @@ func (sh *Shell) typeHandler(s ...string) error {
 	return nil
 }
 
-func (sh *Shell) changeDirHandler(s ...string) error {
-	path := s[0]
+func (sh *Shell) changeDirHandler(s stage) error {
+	path := s.args[0]
 
 	if path == "~" {
 		home, err := os.UserHomeDir()
