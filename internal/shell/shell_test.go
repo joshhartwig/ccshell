@@ -31,7 +31,7 @@ func TestNew(t *testing.T) {
 		shell := New(input, output)
 		shell.Run()
 
-		want := "$ cat: nonexistent: No such file or directory\n"
+		want := "$ cat: noexist: No such file or directory\n"
 		got, err := output.ReadString('\n')
 		if err != nil {
 			t.Errorf("error processing output: %v", err)

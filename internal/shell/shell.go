@@ -108,20 +108,20 @@ func (sh *Shell) findExePath(cmd string) string {
 }
 
 // executeCommand takes the command and the args and calls the operating system to execute
-func (sh *Shell) executeCommand(cmd string, args ...string) error {
+func (sh *Shell) executeCommand(stage stage) error {
 
 	var execCmd *exec.Cmd
-	if len(args) == 0 {
-		execCmd = exec.Command(cmd)
+	if len(stage.args) == 0 {
+		execCmd = exec.Command(stage.name)
 	} else {
-		execCmd = exec.Command(cmd, args...)
+		execCmd = exec.Command(stage.name, stage.args...)
 	}
 
 	bytes, err := execCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s", string(bytes))
 	}
-	fmt.Fprintln(sh.writer, string(bytes))
+	fmt.Fprint(sh.writer, string(bytes))
 	return nil
 }
 
@@ -283,7 +283,7 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 				return fmt.Errorf("%s: command not found\n", line)
 			}
 
-			err := sh.executeCommand(stage.name, stage.args...) // exec command
+			err := sh.executeCommand(stage) // exec command
 			if err != nil {
 				return err
 			}
