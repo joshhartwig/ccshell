@@ -83,6 +83,9 @@ func (sh *Shell) typeHandler(s stage) error {
 }
 
 func (sh *Shell) changeDirHandler(s stage) error {
+	if len(s.args) == 0 {
+		return fmt.Errorf("cd requires at least one argument")
+	}
 	path := s.args[0]
 
 	if path == "~" {

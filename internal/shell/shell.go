@@ -2,6 +2,7 @@ package shell
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -109,20 +110,21 @@ func (sh *Shell) findExePath(cmd string) string {
 
 // executeCommand takes the command and the args and calls the operating system to execute
 func (sh *Shell) executeCommand(stage stage) ([]byte, error) {
+	var stdErr bytes.Buffer
 
-	var execCmd *exec.Cmd
-	if len(stage.args) == 0 {
-		execCmd = exec.Command(stage.name)
-	} else {
-		execCmd = exec.Command(stage.name, stage.args...)
-	}
+	execCmd := exec.Command(stage.name, stage.args...)
+	execCmd.Stderr = &stdErr
 
-	bytes, err := execCmd.CombinedOutput()
+	out, err := execCmd.Output()
 	if err != nil {
-		return []byte{}, err
+		if stdErr.Len() > 0 {
+			return []byte(stdErr.Bytes()), nil
+		} else {
+			return []byte(fmt.Sprintf("error running %s", stage.name)), nil
+		}
 	}
 
-	return bytes, nil
+	return out, nil
 }
 
 // parse takes input from the terminal and processes the tokens splitting on spaces, double quotes
@@ -280,7 +282,6 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 			path := sh.findExePath(stage.name)
 			if path == "" {
 				// command not found and is not builtin return err and start from scratch
-				//fmt.Fprintf(sh.writer, "%s: command not found\n", line)
 				return fmt.Errorf("%s: command not found\n", line)
 			}
 
@@ -289,6 +290,7 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 				return err
 			}
 
+			// if we have an output file write to fs
 			if stage.stdOutFile != "" {
 				err = os.WriteFile(stage.stdOutFile, out, 0644)
 				if err != nil {
@@ -299,13 +301,13 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 
 			//continue
 			sh.writer.Write(out)
+			//fmt.Fprintln(sh.writer)
 			return nil
 		}
 
 		// execute the command if its part of a shell built in ex 'echo'
 		err := f(stage)
 		if err != nil {
-			//fmt.Fprintf(sh.writer, "%v\n", err)
 			return fmt.Errorf("%v\n", err)
 		}
 	}
