@@ -30,10 +30,8 @@ func (sh *Shell) echoHandler(s stage) error {
 	var buf bytes.Buffer
 	for i, c := range s.args {
 		if i == len(s.args)-1 {
-			//fmt.Fprintf(sh.writer, "%s", c) // print final no space
 			buf.Write([]byte(fmt.Sprintf("%s", c)))
 		} else {
-			//fmt.Fprintf(sh.writer, "%s ", c) // print w/ space
 			buf.Write([]byte(fmt.Sprintf("%s ", c)))
 		}
 	}
@@ -55,7 +53,7 @@ func (sh *Shell) echoHandler(s stage) error {
 	}
 
 	sh.writer.Write(buf.Bytes())
-	fmt.Fprintln(sh.writer, "")
+	fmt.Fprint(sh.writer, "")
 	return nil
 }
 

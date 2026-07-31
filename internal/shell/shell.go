@@ -86,13 +86,13 @@ func (sh *Shell) processLine(line string) {
 	tokens := ParseLine(line)
 	pipeline, err := createPipeline(tokens)
 	if err != nil {
-		fmt.Fprint(sh.writer, err)
+		fmt.Fprintln(sh.writer, err)
 		return
 	}
 
 	err = sh.processPipeline(pipeline, line)
 	if err != nil {
-		fmt.Fprint(sh.writer, err)
+		fmt.Fprintln(sh.writer, err)
 		return
 	}
 
@@ -236,12 +236,7 @@ func ParseLine(input string) []string {
 	return tokens
 }
 
-/*
-createPipeline will create a 'pipeline' struct that contains a slice of 'command' structs
-each struct has the command operation and the arguments. For example command.name = 'echo'
-command.args = 'hello world!' 'byeee!'. This is required as we support more complex operations with
-multiple commands like > or |
-*/
+// createPipeline composes stages for each command to parse
 func createPipeline(tokens []string) (pipeline, error) {
 	pipeline := pipeline{}
 	stage := stage{
@@ -282,7 +277,7 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 			path := sh.findExePath(stage.name)
 			if path == "" {
 				// command not found and is not builtin return err and start from scratch
-				return fmt.Errorf("%s: command not found\n", line)
+				return fmt.Errorf("%s: command not found", line)
 			}
 
 			out, err := sh.executeCommand(stage) // exec command
@@ -294,21 +289,20 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 			if stage.stdOutFile != "" {
 				err = os.WriteFile(stage.stdOutFile, out, 0644)
 				if err != nil {
-					fmt.Fprintf(sh.writer, "%v\n", err)
+					fmt.Fprintf(sh.writer, "%v", err)
 					continue
 				}
 			}
 
 			//continue
 			sh.writer.Write(out)
-			//fmt.Fprintln(sh.writer)
 			return nil
 		}
 
 		// execute the command if its part of a shell built in ex 'echo'
 		err := f(stage)
 		if err != nil {
-			return fmt.Errorf("%v\n", err)
+			return fmt.Errorf("%v", err)
 		}
 	}
 	return nil
