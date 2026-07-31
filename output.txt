@@ -1,1 +1,15 @@
-hello
+total 56
+drwxr-xr-x  14 joshuahartwig  staff   448 Jul 30 16:42 .
+drwxr-xr-x  11 joshuahartwig  staff   352 Jul  7 19:41 ..
+drwxr-xr-x   4 joshuahartwig  staff   128 Jun  1 19:56 .codecrafters
+drwxr-xr-x  14 joshuahartwig  staff   448 Jul 30 19:05 .git
+-rw-r--r--   1 joshuahartwig  staff    12 Jun  1 19:56 .gitattributes
+-rw-r--r--   1 joshuahartwig  staff  1299 Jun  1 19:56 README.md
+drwxr-xr-x   3 joshuahartwig  staff    96 Jun 19 14:04 app
+-rw-r--r--   1 joshuahartwig  staff   278 Jun  1 19:56 codecrafters.yml
+-rw-r--r--   1 joshuahartwig  staff    62 Jun  1 19:56 go.mod
+-rw-r--r--   1 joshuahartwig  staff     0 Jun  1 19:56 go.sum
+drwxr-xr-x@  3 joshuahartwig  staff    96 Jun 20 11:37 internal
+-rw-r--r--@  1 joshuahartwig  staff   254 Jul 14 20:14 issues.md
+-rw-r--r--@  1 joshuahartwig  staff     5 Jul 30 16:52 output.txt
+-rwxr-xr-x   1 joshuahartwig  staff   773 Jun  1 19:56 your_program.sh

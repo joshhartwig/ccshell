@@ -108,7 +108,7 @@ func (sh *Shell) findExePath(cmd string) string {
 }
 
 // executeCommand takes the command and the args and calls the operating system to execute
-func (sh *Shell) executeCommand(stage stage) error {
+func (sh *Shell) executeCommand(stage stage) ([]byte, error) {
 
 	var execCmd *exec.Cmd
 	if len(stage.args) == 0 {
@@ -119,10 +119,10 @@ func (sh *Shell) executeCommand(stage stage) error {
 
 	bytes, err := execCmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("%s", string(bytes))
+		return []byte{}, err
 	}
-	fmt.Fprint(sh.writer, string(bytes))
-	return nil
+
+	return bytes, nil
 }
 
 // parse takes input from the terminal and processes the tokens splitting on spaces, double quotes
@@ -260,6 +260,7 @@ func createPipeline(tokens []string) (pipeline, error) {
 				stage.append = false
 				continue
 			}
+			// support unix command > & 1>
 			if arg == ">" || arg == "1>" {
 				outputRedirectSet = true
 			} else {
@@ -283,11 +284,21 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 				return fmt.Errorf("%s: command not found\n", line)
 			}
 
-			err := sh.executeCommand(stage) // exec command
+			out, err := sh.executeCommand(stage) // exec command
 			if err != nil {
 				return err
 			}
+
+			if stage.stdOutFile != "" {
+				err = os.WriteFile(stage.stdOutFile, out, 0644)
+				if err != nil {
+					fmt.Fprintf(sh.writer, "%v\n", err)
+					continue
+				}
+			}
+
 			//continue
+			sh.writer.Write(out)
 			return nil
 		}
 
