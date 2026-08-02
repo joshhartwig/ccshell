@@ -41,3 +41,97 @@ func TestNew(t *testing.T) {
 		}
 	})
 }
+
+func TestNewLineInterceptor(t *testing.T) {
+	t.Run("last byte is newline", func(t *testing.T) {
+		testInput := []byte(string("hello world\n"))
+		want := byte('\n')
+
+		buf := new(bytes.Buffer)
+		inter := interceptor{
+			writer: buf,
+		}
+
+		_, err := inter.Write(testInput)
+		if err != nil {
+			t.Errorf("error writing to buffer")
+		}
+
+		got := inter.lastByte
+		if got != want {
+			t.Errorf("got %v want %v", got, want)
+		}
+	})
+
+	t.Run("last byte is newline function", func(t *testing.T) {
+		testInput := []byte(string("hello world\n"))
+
+		buf := new(bytes.Buffer)
+		inter := interceptor{
+			writer: buf,
+		}
+
+		_, err := inter.Write(testInput)
+		if err != nil {
+			t.Errorf("error writing to buffer")
+		}
+
+		if !inter.LastByteNewLine() {
+			t.Errorf("last byte should have been newline")
+		}
+	})
+
+	t.Run("last byte is not newline", func(t *testing.T) {
+		testInput := []byte(string("hello world"))
+
+		buf := new(bytes.Buffer)
+		inter := interceptor{
+			writer: buf,
+		}
+
+		_, err := inter.Write(testInput)
+		if err != nil {
+			t.Errorf("error writing to buffer")
+		}
+
+		if inter.LastByteNewLine() {
+			t.Errorf("last byte should not have been newline")
+		}
+	})
+
+	t.Run("last byte is newline with empty string", func(t *testing.T) {
+		testInput := []byte(string("\n"))
+
+		buf := new(bytes.Buffer)
+		inter := interceptor{
+			writer: buf,
+		}
+
+		_, err := inter.Write(testInput)
+		if err != nil {
+			t.Errorf("error writing to buffer")
+		}
+
+		if !inter.LastByteNewLine() {
+			t.Errorf("last byte should have been newline")
+		}
+	})
+
+	t.Run("last byte is space not newline", func(t *testing.T) {
+		testInput := []byte(string("hello world "))
+
+		buf := new(bytes.Buffer)
+		inter := interceptor{
+			writer: buf,
+		}
+
+		_, err := inter.Write(testInput)
+		if err != nil {
+			t.Errorf("error writing to buffer")
+		}
+
+		if inter.LastByteNewLine() {
+			t.Errorf("last byte should not have been newline")
+		}
+	})
+}

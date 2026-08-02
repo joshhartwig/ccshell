@@ -19,7 +19,7 @@ func (sh *Shell) pwdHandler(s stage) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(sh.writer, "%s\n", wd)
+	fmt.Fprintf(sh.writer, "%s", wd)
 	return nil
 }
 
@@ -72,10 +72,10 @@ func (sh *Shell) typeHandler(s stage) error {
 			if path == "" {
 				return fmt.Errorf("%s: not found", x)
 			}
-			fmt.Fprintf(sh.writer, "%s is %s\n", x, path)
+			fmt.Fprintf(sh.writer, "%s is %s", x, path)
 			return nil
 		}
-		fmt.Fprintf(sh.writer, "%s is a shell builtin\n", x)
+		fmt.Fprintf(sh.writer, "%s is a shell builtin", x)
 	}
 	return nil
 }

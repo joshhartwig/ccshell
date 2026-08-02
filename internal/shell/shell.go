@@ -11,24 +11,46 @@ import (
 	"strings"
 )
 
-type Shell struct {
-	Builtins   map[string]func(stage stage) error //command and associate functions
-	Paths      []string                           // used to access PATH folders
-	WorkingDir string                             // keeps track of current working directory
-	reader     io.Reader
-	writer     io.Writer
+type interceptor struct {
+	writer   io.Writer
+	lastByte byte
 }
 
+type Shell struct {
+	Builtins    map[string]func(stage stage) error //command and associate functions
+	Paths       []string                           // used to access PATH folders
+	WorkingDir  string                             // keeps track of current working directory
+	reader      io.Reader
+	writer      io.Writer
+	interceptor *interceptor
+}
+
+// a pipeline is a slice of commands
 type pipeline struct {
 	stages []stage
 }
 
+// defines the stage in a command that contains the command and its input or output
 type stage struct {
 	name       string
 	args       []string
 	stdInFile  string
 	stdOutFile string
 	append     bool
+}
+
+// interceptor wraps io writer and tracks last byte written its purpose is to detect if a newline should be inserted
+func (i *interceptor) Write(p []byte) (int, error) {
+	for idx, b := range p {
+		if idx == len(p)-1 {
+			i.lastByte = b
+		}
+	}
+	return i.writer.Write(p)
+}
+
+func (i *interceptor) LastByteNewLine() bool {
+	return i.lastByte == '\n'
 }
 
 // fetches all directories in PATH
@@ -40,12 +62,19 @@ func (sh *Shell) ParsePath(str string) {
 	}
 }
 
+// creates a new shell and returns it for the caller
 func New(r io.Reader, w io.Writer) *Shell {
-	s := Shell{
-		Builtins: make(map[string]func(s stage) error),
-		Paths:    make([]string, 0),
-		reader:   r,
+	inter := interceptor{
 		writer:   w,
+		lastByte: '\n',
+	}
+
+	s := Shell{
+		Builtins:    make(map[string]func(s stage) error),
+		Paths:       make([]string, 0),
+		reader:      r,
+		writer:      &inter,
+		interceptor: &inter,
 	}
 
 	s.registerBuiltins()
@@ -67,12 +96,19 @@ func (sh *Shell) registerBuiltins() {
 	sh.Builtins["cd"] = sh.changeDirHandler
 }
 
+// run runs the shell loop
 func (sh *Shell) Run() {
 	scanner := bufio.NewScanner(sh.reader)
 
 	// keep looping and getting input
 	for {
-		fmt.Fprint(sh.writer, "$ ")
+		if sh.interceptor.LastByteNewLine() {
+			fmt.Fprint(sh.writer, "$ ")
+		} else {
+			fmt.Fprintf(sh.writer, "\n")
+			fmt.Fprint(sh.writer, "$ ")
+		}
+
 		if !scanner.Scan() {
 			break
 		}
@@ -270,6 +306,7 @@ func createPipeline(tokens []string) (pipeline, error) {
 	return pipeline, nil
 }
 
+// process pipeline works through each stage and executes the functions
 func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 	for _, stage := range pipeline.stages {
 		f, ok := sh.Builtins[stage.name]
