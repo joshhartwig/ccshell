@@ -332,6 +332,7 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 					fmt.Fprintf(sh.writer, "%v", err)
 					continue
 				}
+				continue
 			}
 
 			//continue
