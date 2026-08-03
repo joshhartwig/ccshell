@@ -113,7 +113,10 @@ func (sh *Shell) Run() {
 			break
 		}
 
+		sh.interceptor.lastByte = '\n'
+
 		sh.processLine(scanner.Text())
+
 	}
 
 }
