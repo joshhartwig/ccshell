@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"path/filepath"
 )
 
 // exits the shell
@@ -38,14 +37,19 @@ func (sh *Shell) echoHandler(s stage) error {
 
 	// if output file is not empty get cwd
 	if s.stdOutFile != "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return err
-		}
+		// cwd, err := os.Getwd()
+		// if err != nil {
+		// 	return err
+		// }
 
-		filename := s.stdOutFile
-		filepath := filepath.Join(cwd, filename)
-		err = os.WriteFile(filepath, buf.Bytes(), 0644)
+		// filename := s.stdOutFile
+		// filepath := filepath.Join(cwd, filename)
+		// err = os.WriteFile(filepath, buf.Bytes(), 0644)
+		// if err != nil {
+		// 	return err
+		// }
+		// return nil
+		err := createPathAndFile(buf.Bytes(), s.stdOutFile)
 		if err != nil {
 			return err
 		}

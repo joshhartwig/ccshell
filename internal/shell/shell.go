@@ -328,10 +328,11 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 
 			// if we have an output file write to fs
 			if stage.stdOutFile != "" {
-				err = os.WriteFile(stage.stdOutFile, out, 0644)
+				//err = os.WriteFile(stage.stdOutFile, out, 0644)
+				err = createPathAndFile(out, stage.stdOutFile)
 				if err != nil {
-					fmt.Fprintf(sh.writer, "%v", err)
-
+					//fmt.Fprintf(sh.writer, "%v", err)
+					return err
 				}
 				return nil
 			}
@@ -351,7 +352,7 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 }
 
 // helper function that creates directory
-func createDirectory(data []byte, path string) error {
+func createPathAndFile(data []byte, path string) error {
 
 	// check and see if the directory from the path exists
 	folderPath := filepath.Dir(path)

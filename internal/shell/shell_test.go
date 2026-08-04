@@ -136,11 +136,11 @@ func TestNewLineInterceptor(t *testing.T) {
 	})
 }
 
-func TestCreateDirectory(t *testing.T) {
+func TestCreatePathAndFile(t *testing.T) {
 	t.Run("test create directory absolute", func(t *testing.T) {
 		t1 := []byte("hello world")
 		path := "testdata/t1/test1.txt"
-		err := createDirectory(t1, path)
+		err := createPathAndFile(t1, path)
 		if err != nil {
 			t.Fatalf("error creating directory: %v", err)
 		}
