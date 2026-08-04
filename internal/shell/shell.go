@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -157,7 +158,7 @@ func (sh *Shell) executeCommand(stage stage) ([]byte, error) {
 	out, err := execCmd.Output()
 	if err != nil {
 		if stdErr.Len() > 0 {
-			return []byte(stdErr.Bytes()), nil
+			return []byte(stdErr.Bytes()), errors.New(stdErr.String())
 		} else {
 			return []byte(fmt.Sprintf("error running %s", stage.name)), nil
 		}
@@ -330,9 +331,9 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 				err = os.WriteFile(stage.stdOutFile, out, 0644)
 				if err != nil {
 					fmt.Fprintf(sh.writer, "%v", err)
-					continue
+
 				}
-				continue
+				return nil
 			}
 
 			//continue
@@ -345,6 +346,29 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 		if err != nil {
 			return fmt.Errorf("%v", err)
 		}
+	}
+	return nil
+}
+
+// helper function that creates directory
+func createDirectory(data []byte, path string) error {
+
+	// check and see if the directory from the path exists
+	folderPath := filepath.Dir(path)
+	_, err := os.Stat(folderPath)
+	if err != nil {
+		// if the folder does not exist create it
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(folderPath, 0755)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err = os.WriteFile(path, data, 0644)
+	if err != nil {
+		return err
 	}
 	return nil
 }

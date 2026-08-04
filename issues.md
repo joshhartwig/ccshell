@@ -1,9 +1,4 @@
 # Issues
 
-```sh
-[your-program] $ echo "mixed\"quote'script'\\"
-[your-program] mixed"quote'script'\"
-[tester::#GU3] ^ Line does not match expected value.
-[tester::#GU3] Expected: "mixed"quote'script'\"
-[tester::#GU3] Received: "mixed"quote'script'\""
-```
+1. ```cat noexist > output.txt``` pipes error to text file but should error out first, note the correct error from stdout is going into the file
+2.
