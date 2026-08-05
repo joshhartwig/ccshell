@@ -150,21 +150,20 @@ func (sh *Shell) findExePath(cmd string) string {
 
 // executeCommand takes the command and the args and calls the operating system to execute
 func (sh *Shell) executeCommand(stage stage) ([]byte, error) {
-	var stdErr bytes.Buffer
+	var stdOut bytes.Buffer
 
 	execCmd := exec.Command(stage.name, stage.args...)
-	execCmd.Stderr = &stdErr
+	execCmd.Stdout = &stdOut
+	execCmd.Stderr = sh.writer
 
-	out, err := execCmd.Output()
+	err := execCmd.Run()
 	if err != nil {
-		if stdErr.Len() > 0 {
-			return []byte(stdErr.Bytes()), errors.New(stdErr.String())
-		} else {
-			return []byte(fmt.Sprintf("error running %s", stage.name)), nil
+		if _, ok := err.(*exec.ExitError); !ok {
+			return nil, fmt.Errorf("error running %s: %v", stage.name, err)
 		}
 	}
 
-	return out, nil
+	return stdOut.Bytes(), nil
 }
 
 // parse takes input from the terminal and processes the tokens splitting on spaces, double quotes
