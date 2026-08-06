@@ -33,11 +33,18 @@ type pipeline struct {
 
 // defines the stage in a command that contains the command and its input or output
 type stage struct {
-	name       string
-	args       []string
-	stdInFile  string
-	stdOutFile string
-	append     bool
+	name         string
+	args         []string
+	stdInFile    string
+	stdOutFile   string
+	stdErrorFile string
+	append       bool
+}
+
+type output struct {
+	stdout    bytes.Buffer
+	stderror  bytes.Buffer
+	errorCode int
 }
 
 // interceptor wraps io writer and tracks last byte written its purpose is to detect if a newline should be inserted
@@ -286,22 +293,25 @@ func createPipeline(tokens []string) (pipeline, error) {
 		return pipeline, errors.New("input length is zero")
 	}
 
-	outputRedirectSet := false
+	redirectStdOut := false // support for > & 1>
+
 	for i, arg := range tokens {
 		if i == 0 { // first arg is cmd
 			stage.name = tokens[i]
 		} else {
-			if outputRedirectSet {
+			if redirectStdOut {
 				stage.stdOutFile = tokens[i]
 				stage.append = false
 				continue
 			}
+
 			// support unix command > & 1>
 			if arg == ">" || arg == "1>" {
-				outputRedirectSet = true
+				redirectStdOut = true
 			} else {
 				stage.args = append(stage.args, arg)
 			}
+
 		}
 	}
 	pipeline.stages = append(pipeline.stages, stage)
@@ -327,10 +337,8 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 
 			// if we have an output file write to fs
 			if stage.stdOutFile != "" {
-				//err = os.WriteFile(stage.stdOutFile, out, 0644)
 				err = createPathAndFile(out, stage.stdOutFile)
 				if err != nil {
-					//fmt.Fprintf(sh.writer, "%v", err)
 					return err
 				}
 				return nil
