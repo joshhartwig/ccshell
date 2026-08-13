@@ -35,29 +35,36 @@ func (sh *Shell) echoHandler(s stage) error {
 		}
 	}
 
-	// if output file is not empty get cwd
-	if s.stdOutFile != "" {
-		// cwd, err := os.Getwd()
-		// if err != nil {
-		// 	return err
-		// }
-
-		// filename := s.stdOutFile
-		// filepath := filepath.Join(cwd, filename)
-		// err = os.WriteFile(filepath, buf.Bytes(), 0644)
-		// if err != nil {
-		// 	return err
-		// }
-		// return nil
-		err := createPathAndFile(buf.Bytes(), s.stdOutFile)
-		if err != nil {
-			return err
-		}
-		return nil
+	res := result{
+		stdOut: buf,
 	}
+	err := s.outputfunc(s, res)
+	if err != nil {
+		return err
+	}
+	// if output file is not empty get cwd
+	// if s.stdOutFile != "" {
+	// 	// cwd, err := os.Getwd()
+	// 	// if err != nil {
+	// 	// 	return err
+	// 	// }
 
-	sh.writer.Write(buf.Bytes())
-	fmt.Fprint(sh.writer, "")
+	// 	// filename := s.stdOutFile
+	// 	// filepath := filepath.Join(cwd, filename)
+	// 	// err = os.WriteFile(filepath, buf.Bytes(), 0644)
+	// 	// if err != nil {
+	// 	// 	return err
+	// 	// }
+	// 	// return nil
+	// 	err := createPathAndFile(buf.Bytes(), s.stdOutFile)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	return nil
+	// }
+
+	// sh.writer.Write(buf.Bytes())
+	// fmt.Fprint(sh.writer, "")
 	return nil
 }
 

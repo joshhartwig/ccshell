@@ -397,8 +397,6 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 				return err
 			}
 
-			//continue
-			//sh.writer.Write(result.stdOut.Bytes())
 			return nil
 		}
 
