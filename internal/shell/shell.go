@@ -33,18 +33,55 @@ type pipeline struct {
 
 // defines the stage in a command that contains the command and its input or output
 type stage struct {
-	name         string
-	args         []string
-	stdInFile    string
-	stdOutFile   string
-	stdErrorFile string
-	append       bool
+	name               string
+	args               []string
+	stdOutFile         string
+	stdErrorFile       string
+	appendStdErrorFile string
+	output             map[int]func(st stage, res result) error // 0: normal output to stdout 1: > stdout to file 2: > stderror to file
+	outputfunc         func(st stage, res result) error
 }
 
-type output struct {
-	stdout    bytes.Buffer
-	stderror  bytes.Buffer
-	errorCode int
+// result represents the output from executeCommand, contains both stderror and stdout in bytes as well as exit code
+type result struct {
+	stdOut   bytes.Buffer
+	stdError bytes.Buffer
+	exitCode int
+}
+
+func (sh *Shell) noRedirection(s stage, res result) error {
+	_, err := sh.writer.Write(res.stdOut.Bytes())
+	return err
+}
+
+// pipe out > & 1> should redirect stdout but write out stderror
+func (sh *Shell) redirectStdOut(s stage, res result) error {
+	if res.stdOut.Len() > 0 {
+		err := createPathAndFile(res.stdOut.Bytes(), s.stdOutFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	if res.stdError.Len() != 0 {
+		sh.writer.Write(res.stdError.Bytes())
+	}
+	return nil
+}
+
+// pipe content out 2> should redirect stderr but not stdout
+func (sh *Shell) redirectStdError(s stage, res result) error {
+	if res.stdError.Len() > 0 {
+		err := createPathAndFile(res.stdError.Bytes(), s.stdErrorFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	if res.stdOut.Len() != 0 {
+		sh.writer.Write(res.stdOut.Bytes())
+	}
+	return nil
 }
 
 // interceptor wraps io writer and tracks last byte written its purpose is to detect if a newline should be inserted
@@ -131,7 +168,7 @@ func (sh *Shell) Run() {
 
 func (sh *Shell) processLine(line string) {
 	tokens := ParseLine(line)
-	pipeline, err := createPipeline(tokens)
+	pipeline, err := createPipeline(tokens, *sh)
 	if err != nil {
 		fmt.Fprintln(sh.writer, err)
 		return
@@ -155,22 +192,23 @@ func (sh *Shell) findExePath(cmd string) string {
 	return path
 }
 
-// executeCommand takes the command and the args and calls the operating system to execute
-func (sh *Shell) executeCommand(stage stage) ([]byte, error) {
-	var stdOut bytes.Buffer
+// executeCommandResult takes the command and the args and calls the operating system to execute
+func (sh *Shell) executeCommandResult(stage stage) (result, error) {
+	var res result
 
 	execCmd := exec.Command(stage.name, stage.args...)
-	execCmd.Stdout = &stdOut
-	execCmd.Stderr = sh.writer
+	execCmd.Stdout = &res.stdOut
+	execCmd.Stderr = &res.stdError
 
 	err := execCmd.Run()
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); !ok {
-			return nil, fmt.Errorf("error running %s: %v", stage.name, err)
+			res.exitCode = execCmd.ProcessState.ExitCode()
+			return res, fmt.Errorf("error running %s: %v", stage.name, err)
 		}
 	}
 
-	return stdOut.Bytes(), nil
+	return res, nil
 }
 
 // parse takes input from the terminal and processes the tokens splitting on spaces, double quotes
@@ -283,32 +321,49 @@ func ParseLine(input string) []string {
 }
 
 // createPipeline composes stages for each command to parse
-func createPipeline(tokens []string) (pipeline, error) {
+func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 	pipeline := pipeline{}
 	stage := stage{
-		append: false,
+		output: make(map[int]func(stage, result) error),
 	}
+
+	stage.output[0] = sh.noRedirection
+	stage.output[1] = sh.redirectStdOut
+	stage.output[2] = sh.redirectStdError
 
 	if len(tokens) == 0 {
 		return pipeline, errors.New("input length is zero")
 	}
 
-	redirectStdOut := false // support for > & 1>
+	redirectStdOut := false   // support for > & 1>
+	redirectStdError := false // support for 2>
 
 	for i, arg := range tokens {
 		if i == 0 { // first arg is cmd
 			stage.name = tokens[i]
 		} else {
 			if redirectStdOut {
+				f, _ := stage.output[1]
+				stage.outputfunc = f
 				stage.stdOutFile = tokens[i]
-				stage.append = false
 				continue
 			}
-
-			// support unix command > & 1>
-			if arg == ">" || arg == "1>" {
-				redirectStdOut = true
+			if redirectStdError {
+				f, _ := stage.output[2]
+				stage.outputfunc = f
+				stage.stdErrorFile = tokens[i]
+				continue
 			} else {
+				f, _ := stage.output[0]
+				stage.outputfunc = f
+			}
+
+			switch arg {
+			case ">", "1>":
+				redirectStdOut = true
+			case "2>":
+				redirectStdError = true
+			default:
 				stage.args = append(stage.args, arg)
 			}
 
@@ -330,26 +385,24 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 				return fmt.Errorf("%s: command not found", line)
 			}
 
-			out, err := sh.executeCommand(stage) // exec command
+			// return a result type that contains stderr and output
+			result, err := sh.executeCommandResult(stage) // exec command
 			if err != nil {
 				return err
 			}
 
-			// if we have an output file write to fs
-			if stage.stdOutFile != "" {
-				err = createPathAndFile(out, stage.stdOutFile)
-				if err != nil {
-					return err
-				}
-				return nil
+			// execute output func
+			err = stage.outputfunc(stage, result)
+			if err != nil {
+				return err
 			}
 
 			//continue
-			sh.writer.Write(out)
+			//sh.writer.Write(result.stdOut.Bytes())
 			return nil
 		}
 
-		// execute the command if its part of a shell built in ex 'echo'
+		// execute shell built in command
 		err := f(stage)
 		if err != nil {
 			return fmt.Errorf("%v", err)

@@ -327,14 +327,15 @@ func TestParse(t *testing.T) {
 }
 
 func TestCreatePipeline(t *testing.T) {
+	sh := Shell{}
 	testInput := []string{"cat", "hello world", ">", "test.txt"}
 	want := pipeline{
 		stages: []stage{
-			{name: "cat", args: []string{"hello", "world"}, stdOutFile: "test.txt", append: false},
+			{name: "cat", args: []string{"hello", "world"}, stdOutFile: "test.txt"},
 		},
 	}
 
-	got, err := createPipeline(testInput)
+	got, err := createPipeline(testInput, sh)
 	if err != nil {
 		t.Errorf("got error: %v", err)
 	}
