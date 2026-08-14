@@ -18,9 +18,9 @@ type interceptor struct {
 }
 
 type Shell struct {
-	Builtins    map[string]func(stage stage) error //command and associate functions
-	Paths       []string                           // used to access PATH folders
-	WorkingDir  string                             // keeps track of current working directory
+	Builtins    map[string]func(stage stage) (result, error) //command and associate functions
+	Paths       []string                                     // used to access PATH folders
+	WorkingDir  string                                       // keeps track of current working directory
 	reader      io.Reader
 	writer      io.Writer
 	interceptor *interceptor
@@ -115,7 +115,7 @@ func New(r io.Reader, w io.Writer) *Shell {
 	}
 
 	s := Shell{
-		Builtins:    make(map[string]func(s stage) error),
+		Builtins:    make(map[string]func(s stage) (result, error)),
 		Paths:       make([]string, 0),
 		reader:      r,
 		writer:      &inter,
@@ -174,12 +174,11 @@ func (sh *Shell) processLine(line string) {
 		return
 	}
 
-	err = sh.processPipeline(pipeline, line)
+	err = sh.processPipeline(pipeline)
 	if err != nil {
 		fmt.Fprintln(sh.writer, err)
 		return
 	}
-
 }
 
 // looks for an executable in the PATH and returns the path of the EXE
@@ -331,6 +330,9 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 	stage.output[1] = sh.redirectStdOut
 	stage.output[2] = sh.redirectStdError
 
+	// set the default outputfunc to nodirection
+	stage.outputfunc = sh.noRedirection
+
 	if len(tokens) == 0 {
 		return pipeline, errors.New("input length is zero")
 	}
@@ -375,14 +377,14 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 }
 
 // process pipeline works through each stage and executes the functions
-func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
+func (sh *Shell) processPipeline(pipeline pipeline) error {
 	for _, stage := range pipeline.stages {
 		f, ok := sh.Builtins[stage.name]
 		if !ok {
 			path := sh.findExePath(stage.name)
 			if path == "" {
 				// command not found and is not builtin return err and start from scratch
-				return fmt.Errorf("%s: command not found", line)
+				return fmt.Errorf("%s: command not found", stage.name)
 			}
 
 			// return a result type that contains stderr and output
@@ -401,7 +403,12 @@ func (sh *Shell) processPipeline(pipeline pipeline, line string) error {
 		}
 
 		// execute shell built in command
-		err := f(stage)
+		res, err := f(stage)
+		if err != nil {
+			return fmt.Errorf("%v", err)
+		}
+
+		err = stage.outputfunc(stage, res)
 		if err != nil {
 			return fmt.Errorf("%v", err)
 		}

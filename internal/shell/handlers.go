@@ -7,23 +7,25 @@ import (
 )
 
 // exits the shell
-func (sh *Shell) exitHandler(s stage) error {
+func (sh *Shell) exitHandler(s stage) (result, error) {
 	os.Exit(0)
-	return nil
+	return result{}, nil
 }
 
 // prints current working directory
-func (sh *Shell) pwdHandler(s stage) error {
+func (sh *Shell) pwdHandler(s stage) (result, error) {
+	res := result{}
+
 	wd, err := os.Getwd()
 	if err != nil {
-		return err
+		return result{}, err
 	}
-	fmt.Fprintf(sh.writer, "%s", wd)
-	return nil
+	res.stdOut.Write([]byte(fmt.Sprintf("%s", wd)))
+	return res, nil
 }
 
 // echos text provided to echo command
-func (sh *Shell) echoHandler(s stage) error {
+func (sh *Shell) echoHandler(s stage) (result, error) {
 	// if stage outputs to a text file write everything here to buffer then to file
 	// overwrite if append = false
 	var buf bytes.Buffer
@@ -35,44 +37,15 @@ func (sh *Shell) echoHandler(s stage) error {
 		}
 	}
 
-	res := result{
-		stdOut: buf,
-	}
-	err := s.outputfunc(s, res)
-	if err != nil {
-		return err
-	}
-	// if output file is not empty get cwd
-	// if s.stdOutFile != "" {
-	// 	// cwd, err := os.Getwd()
-	// 	// if err != nil {
-	// 	// 	return err
-	// 	// }
-
-	// 	// filename := s.stdOutFile
-	// 	// filepath := filepath.Join(cwd, filename)
-	// 	// err = os.WriteFile(filepath, buf.Bytes(), 0644)
-	// 	// if err != nil {
-	// 	// 	return err
-	// 	// }
-	// 	// return nil
-	// 	err := createPathAndFile(buf.Bytes(), s.stdOutFile)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	return nil
-	// }
-
-	// sh.writer.Write(buf.Bytes())
-	// fmt.Fprint(sh.writer, "")
-	return nil
+	return result{stdOut: buf}, nil
 }
 
 // returns if a command is built in or the path of the command if not
-func (sh *Shell) typeHandler(s stage) error {
+func (sh *Shell) typeHandler(s stage) (result, error) {
+	res := result{}
 	for _, x := range s.args { // loop through args
 		if x == "" {
-			return fmt.Errorf("type requires one or more arguments") // stop empty type commands
+			return res, fmt.Errorf("type requires one or more arguments") // stop empty type commands
 		}
 
 		_, found := sh.Builtins[x] // look for built in commands
@@ -81,37 +54,37 @@ func (sh *Shell) typeHandler(s stage) error {
 
 			path := sh.findExePath(x)
 			if path == "" {
-				return fmt.Errorf("%s: not found", x)
+				return res, fmt.Errorf("%s: not found", x)
 			}
-			fmt.Fprintf(sh.writer, "%s is %s", x, path)
-			return nil
+			res.stdOut.Write([]byte(fmt.Sprintf("%s is %s", x, path)))
+			return res, nil
 		}
-		fmt.Fprintf(sh.writer, "%s is a shell builtin", x)
+		res.stdOut.Write([]byte(fmt.Sprintf("%s is a shell builtin", x)))
 	}
-	return nil
+	return res, nil
 }
 
-func (sh *Shell) changeDirHandler(s stage) error {
+func (sh *Shell) changeDirHandler(s stage) (result, error) {
 	if len(s.args) == 0 {
-		return fmt.Errorf("cd requires at least one argument")
+		return result{}, fmt.Errorf("cd requires at least one argument")
 	}
 	path := s.args[0]
 
 	if path == "~" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return err
+			return result{}, err
 		}
 
 		err = os.Chdir(home)
-		return nil
+		return result{}, nil
 	}
 
 	err := os.Chdir(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("cd: %s: No such file or directory", path)
+			return result{}, fmt.Errorf("cd: %s: No such file or directory", path)
 		}
 	}
-	return nil
+	return result{}, nil
 }
