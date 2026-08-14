@@ -56,11 +56,9 @@ func (sh *Shell) noRedirection(s stage, res result) error {
 
 // pipe out > & 1> should redirect stdout but write out stderror
 func (sh *Shell) redirectStdOut(s stage, res result) error {
-	if res.stdOut.Len() > 0 {
-		err := createPathAndFile(res.stdOut.Bytes(), s.stdOutFile)
-		if err != nil {
-			return err
-		}
+	err := createPathAndFile(res.stdOut.Bytes(), s.stdOutFile)
+	if err != nil {
+		return err
 	}
 
 	if res.stdError.Len() != 0 {
@@ -71,16 +69,16 @@ func (sh *Shell) redirectStdOut(s stage, res result) error {
 
 // pipe content out 2> should redirect stderr but not stdout
 func (sh *Shell) redirectStdError(s stage, res result) error {
-	if res.stdError.Len() > 0 {
-		err := createPathAndFile(res.stdError.Bytes(), s.stdErrorFile)
-		if err != nil {
-			return err
-		}
-	}
 
-	if res.stdOut.Len() != 0 {
+	if res.stdOut.Len() > 0 {
 		sh.writer.Write(res.stdOut.Bytes())
 	}
+
+	err := createPathAndFile(res.stdError.Bytes(), s.stdErrorFile)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
