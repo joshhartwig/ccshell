@@ -37,7 +37,8 @@ type stage struct {
 	args         []string
 	stdOutFile   string
 	stdErrorFile string
-	appendFile   bool
+	appendStdOut bool
+	appendStdErr bool
 	output       map[int]func(st stage, res result) error // 0: normal output to stdout 1: > stdout to file 2: > stderror to file
 	outputfunc   func(st stage, res result) error
 }
@@ -56,37 +57,37 @@ func (sh *Shell) noRedirection(s stage, res result) error {
 
 // pipe out > & 1> should redirect stdout but write out stderror
 func (sh *Shell) redirectStdOut(s stage, res result) error {
-	if s.appendFile {
-		err := appendFile(res.stdOut.Bytes(), s.stdOutFile)
-		if err != nil {
+	if s.appendStdOut {
+		if err := appendFile(res.stdOut.Bytes(), s.stdOutFile); err != nil {
 			return err
 		}
-		return nil
-	}
-	err := createPathAndFile(res.stdOut.Bytes(), s.stdOutFile)
-	if err != nil {
-		return err
+	} else {
+		if err := createPathAndFile(res.stdOut.Bytes(), s.stdOutFile); err != nil {
+			return err
+		}
 	}
 
-	if res.stdError.Len() != 0 {
-		sh.writer.Write(res.stdError.Bytes())
+	if res.stdError.Len() > 0 {
+		if _, err := sh.writer.Write(res.stdError.Bytes()); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 // pipe content out 2> should redirect stderr but not stdout
 func (sh *Shell) redirectStdError(s stage, res result) error {
-
 	if res.stdOut.Len() > 0 {
-		sh.writer.Write(res.stdOut.Bytes())
+		if _, err := sh.writer.Write(res.stdOut.Bytes()); err != nil {
+			return err
+		}
 	}
 
-	err := createPathAndFile(res.stdError.Bytes(), s.stdErrorFile)
-	if err != nil {
-		return err
+	if s.appendStdErr {
+		return appendFile(res.stdError.Bytes(), s.stdErrorFile)
 	}
 
-	return nil
+	return createPathAndFile(res.stdError.Bytes(), s.stdErrorFile)
 }
 
 // interceptor wraps io writer and tracks last byte written its purpose is to detect if a newline should be inserted
@@ -342,9 +343,10 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 		return pipeline, errors.New("input length is zero")
 	}
 
-	redirectStdOut := false   // support for > & 1>
-	redirectStdError := false // support for 2>
-	appendStdOut := false
+	redirectStdOut := false   //  > & 1>
+	redirectStdError := false //  2>
+	appendStdOut := false     // >>
+	appendStdError := false   // support for 2>>
 
 	for i, arg := range tokens {
 		if i == 0 { // first arg is cmd
@@ -366,7 +368,14 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 				f, _ := stage.output[1]
 				stage.outputfunc = f
 				stage.stdOutFile = tokens[i]
-				stage.appendFile = true
+				stage.appendStdOut = true
+				continue
+			}
+			if appendStdError {
+				f, _ := stage.output[2]
+				stage.outputfunc = f
+				stage.stdErrorFile = tokens[i]
+				stage.appendStdErr = true
 				continue
 			} else {
 				f, _ := stage.output[0]
@@ -380,6 +389,8 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 				redirectStdError = true
 			case ">>", "1>>":
 				appendStdOut = true
+			case "2>>":
+				appendStdError = true
 			default:
 				stage.args = append(stage.args, arg)
 			}
