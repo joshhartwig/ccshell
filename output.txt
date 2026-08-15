@@ -1,2 +1,2 @@
-cat: noexist: No such file or directory
-firstsecond
+hello
+bob

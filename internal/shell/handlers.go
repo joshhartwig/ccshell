@@ -1,9 +1,9 @@
 package shell
 
 import (
-	"bytes"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // exits the shell
@@ -28,16 +28,19 @@ func (sh *Shell) pwdHandler(s stage) (result, error) {
 func (sh *Shell) echoHandler(s stage) (result, error) {
 	// if stage outputs to a text file write everything here to buffer then to file
 	// overwrite if append = false
-	var buf bytes.Buffer
-	for i, c := range s.args {
-		if i == len(s.args)-1 {
-			buf.Write([]byte(fmt.Sprintf("%s", c)))
-		} else {
-			buf.Write([]byte(fmt.Sprintf("%s ", c)))
-		}
-	}
+	// var buf bytes.Buffer
+	// for i, c := range s.args {
+	// 	if i == len(s.args)-1 {
+	// 		buf.Write([]byte(fmt.Sprintf("%s", c)))
+	// 	} else {
+	// 		buf.Write([]byte(fmt.Sprintf("%s ", c)))
+	// 	}
+	// }
 
-	return result{stdOut: buf}, nil
+	// return result{stdOut: buf}, nil
+	var res result
+	fmt.Fprintln(&res.stdOut, strings.Join(s.args, " "))
+	return res, nil
 }
 
 // returns if a command is built in or the path of the command if not
