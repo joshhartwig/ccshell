@@ -33,13 +33,13 @@ type pipeline struct {
 
 // defines the stage in a command that contains the command and its input or output
 type stage struct {
-	name               string
-	args               []string
-	stdOutFile         string
-	stdErrorFile       string
-	appendStdErrorFile string
-	output             map[int]func(st stage, res result) error // 0: normal output to stdout 1: > stdout to file 2: > stderror to file
-	outputfunc         func(st stage, res result) error
+	name         string
+	args         []string
+	stdOutFile   string
+	stdErrorFile string
+	appendFile   bool
+	output       map[int]func(st stage, res result) error // 0: normal output to stdout 1: > stdout to file 2: > stderror to file
+	outputfunc   func(st stage, res result) error
 }
 
 // result represents the output from executeCommand, contains both stderror and stdout in bytes as well as exit code
@@ -56,6 +56,13 @@ func (sh *Shell) noRedirection(s stage, res result) error {
 
 // pipe out > & 1> should redirect stdout but write out stderror
 func (sh *Shell) redirectStdOut(s stage, res result) error {
+	if s.appendFile {
+		err := appendFile(res.stdOut.Bytes(), s.stdOutFile)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 	err := createPathAndFile(res.stdOut.Bytes(), s.stdOutFile)
 	if err != nil {
 		return err
@@ -337,6 +344,7 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 
 	redirectStdOut := false   // support for > & 1>
 	redirectStdError := false // support for 2>
+	appendStdOut := false
 
 	for i, arg := range tokens {
 		if i == 0 { // first arg is cmd
@@ -353,6 +361,13 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 				stage.outputfunc = f
 				stage.stdErrorFile = tokens[i]
 				continue
+			}
+			if appendStdOut {
+				f, _ := stage.output[1]
+				stage.outputfunc = f
+				stage.stdOutFile = tokens[i]
+				stage.appendFile = true
+				continue
 			} else {
 				f, _ := stage.output[0]
 				stage.outputfunc = f
@@ -363,6 +378,8 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 				redirectStdOut = true
 			case "2>":
 				redirectStdError = true
+			case ">>", "1>>":
+				appendStdOut = true
 			default:
 				stage.args = append(stage.args, arg)
 			}
@@ -414,7 +431,7 @@ func (sh *Shell) processPipeline(pipeline pipeline) error {
 	return nil
 }
 
-// helper function that creates directory
+// helper function that creates directory and file
 func createPathAndFile(data []byte, path string) error {
 
 	// check and see if the directory from the path exists
@@ -432,6 +449,20 @@ func createPathAndFile(data []byte, path string) error {
 
 	err = os.WriteFile(path, data, 0644)
 	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// helper function that appends to existing file
+func appendFile(data []byte, path string) error {
+	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close() // Ensure the file closes when the function exits
+
+	if _, err := file.Write(data); err != nil {
 		return err
 	}
 	return nil
