@@ -104,6 +104,10 @@ func (i *interceptor) LastByteNewLine() bool {
 	return i.lastByte == '\n'
 }
 
+func (i *interceptor) LastByteTab() bool {
+	return i.lastByte == '\t'
+}
+
 // fetches all directories in PATH
 func (sh *Shell) ParsePath(str string) {
 	seperator := os.PathListSeparator
@@ -153,19 +157,18 @@ func (sh *Shell) Run() {
 
 	// keep looping and getting input
 	for {
+
 		if sh.interceptor.LastByteNewLine() {
 			fmt.Fprint(sh.writer, "$ ")
 		} else {
 			fmt.Fprintf(sh.writer, "\n")
 			fmt.Fprint(sh.writer, "$ ")
 		}
-
 		if !scanner.Scan() {
 			break
 		}
 
 		sh.interceptor.lastByte = '\n'
-
 		sh.processLine(scanner.Text())
 
 	}
