@@ -59,6 +59,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 			matches := ks.completer(string(buf))
 			switch len(matches) {
 			case 0: // do nothing
+				buf = append(buf, '\a')
 			case 1:
 				buf = []rune(matches[0]) // find the first relevant keyword
 				buf = append(buf, ' ')   // add a space to the match
@@ -66,7 +67,6 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 			default:
 				fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(matches, " "))
 				ks.Redraw(prompt, buf)
-
 			}
 
 		// support for backspace in terminal
