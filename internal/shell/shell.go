@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/codecrafters-io/shell-starter-go/internal/completions"
@@ -160,6 +162,11 @@ func (sh *Shell) registerBuiltins() {
 	sh.completer.Insert("echo")
 	sh.completer.Insert("type")
 	sh.completer.Insert("cd")
+
+	// adds all exes in path
+	for _, e := range sh.findAllExeOSPath() {
+		sh.completer.Insert(e)
+	}
 }
 
 // test function for putting terminal in raw mode
@@ -222,6 +229,56 @@ func (sh *Shell) findExePath(cmd string) string {
 		return ""
 	}
 	return path
+}
+
+// isExecAll returns true if the file is exectuable by all
+func IsExecAll(mode os.FileMode) bool {
+	return mode&0111 == 0111
+}
+
+// findAllExePath returns all exes in the current os.PATH
+func (sh *Shell) findAllExeOSPath() []string {
+	osPath := os.Getenv("PATH")
+	var executables []string
+	paths := strings.Split(osPath, string(filepath.ListSeparator))
+
+	for _, p := range paths {
+		entries, err := os.ReadDir(p)
+		if err != nil {
+			return executables
+		}
+
+		for _, entry := range entries {
+			// Skip directories
+			if entry.IsDir() {
+				continue
+			}
+
+			info, err := entry.Info()
+			if err != nil {
+				// Skip files that error out when fetching info
+				continue
+			}
+
+			if isExecutable(info) {
+				executables = append(executables, entry.Name())
+			}
+		}
+	}
+
+	return executables
+}
+
+// isExecutable checks if a file is an executable depending on the Operating System.
+func isExecutable(info fs.FileInfo) bool {
+	if runtime.GOOS == "windows" {
+		// On Windows, check for common executable file extensions
+		ext := filepath.Ext(info.Name())
+		return ext == ".exe" || ext == ".bat" || ext == ".cmd"
+	}
+
+	// On Unix/Linux/macOS, check if any executable bit is set (User, Group, or Other)
+	return info.Mode().Perm()&0111 != 0
 }
 
 // executeCommandResult takes the command and the args and calls the operating system to execute
