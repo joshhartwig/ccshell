@@ -12,5 +12,5 @@ var _ = fmt.Print
 
 func main() {
 	sh := shell.New(os.Stdin, os.Stdout)
-	sh.Run()
+	sh.RunKeystrokeMode()
 }

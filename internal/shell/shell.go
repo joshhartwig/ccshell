@@ -10,6 +10,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/codecrafters-io/shell-starter-go/internal/completions"
+	"github.com/codecrafters-io/shell-starter-go/internal/keylistener"
 )
 
 type interceptor struct {
@@ -24,6 +27,7 @@ type Shell struct {
 	reader      io.Reader
 	writer      io.Writer
 	interceptor *interceptor
+	completer   *completions.Trie
 }
 
 // a pipeline is a slice of commands
@@ -130,6 +134,7 @@ func New(r io.Reader, w io.Writer) *Shell {
 		reader:      r,
 		writer:      &inter,
 		interceptor: &inter,
+		completer:   completions.NewTrie(),
 	}
 
 	s.registerBuiltins()
@@ -149,6 +154,28 @@ func (sh *Shell) registerBuiltins() {
 	sh.Builtins["echo"] = sh.echoHandler
 	sh.Builtins["type"] = sh.typeHandler
 	sh.Builtins["cd"] = sh.changeDirHandler
+
+	sh.completer.Insert("exit")
+	sh.completer.Insert("pwd")
+	sh.completer.Insert("echo")
+	sh.completer.Insert("type")
+	sh.completer.Insert("cd")
+}
+
+// test function for putting terminal in raw mode
+func (sh *Shell) RunKeystrokeMode() {
+	ks := keylistener.NewKeyStrokeListener(sh.reader.(*os.File), sh.writer, sh.completer.Prefixes)
+	for {
+		if !sh.interceptor.LastByteNewLine() {
+			fmt.Fprintf(sh.writer, "\r\n")
+		}
+
+		str, err := ks.HandleInput("$ ")
+		if err != nil {
+			return
+		}
+		sh.processLine(str)
+	}
 }
 
 // run runs the shell loop
@@ -157,7 +184,6 @@ func (sh *Shell) Run() {
 
 	// keep looping and getting input
 	for {
-
 		if sh.interceptor.LastByteNewLine() {
 			fmt.Fprint(sh.writer, "$ ")
 		} else {
@@ -170,9 +196,7 @@ func (sh *Shell) Run() {
 
 		sh.interceptor.lastByte = '\n'
 		sh.processLine(scanner.Text())
-
 	}
-
 }
 
 func (sh *Shell) processLine(line string) {
