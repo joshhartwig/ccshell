@@ -1,5 +1,7 @@
 package completions
 
+import "strings"
+
 type TrieNode struct {
 	Children  map[rune]*TrieNode
 	EndOfWord bool
@@ -25,6 +27,10 @@ func NewTrieNode() *TrieNode {
 
 // Inserts a word into the Trie data structure
 func (t *Trie) Insert(word string) {
+	word = strings.ToLower(word)   // normalize the word removing spacing
+	word = strings.Trim(word, " ") // and leading + trailing spaces
+
+	// iterate through each char node looking for the next char
 	current := t.Root
 	for _, char := range word {
 		node, ok := current.Children[char]
@@ -73,11 +79,7 @@ func dfsCollectCompletions(node *TrieNode, prefix string, results *[]string) {
 	if node.EndOfWord {
 		*results = append(*results, prefix)
 	}
-	for i := rune('a'); i <= rune('z'); i++ {
-		next, ok := node.Children[i]
-		if !ok {
-			continue
-		}
-		dfsCollectCompletions(next, prefix+string(i), results)
+	for ch, next := range node.Children {
+		dfsCollectCompletions(next, prefix+string(ch), results)
 	}
 }

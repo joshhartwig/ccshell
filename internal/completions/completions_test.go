@@ -1,7 +1,7 @@
 package completions
 
 import (
-	"fmt"
+	"slices"
 	"testing"
 )
 
@@ -11,10 +11,11 @@ func TestInsert(t *testing.T) {
 	tests := []struct {
 		word       string
 		shouldPass bool
-	}{{
-		word:       "cat",
-		shouldPass: true,
-	},
+	}{
+		{
+			word:       "cat",
+			shouldPass: true,
+		},
 		{
 			word:       "cog",
 			shouldPass: true,
@@ -26,6 +27,10 @@ func TestInsert(t *testing.T) {
 		{
 			word:       "ham",
 			shouldPass: false,
+		},
+		{
+			word:       "ham_tree",
+			shouldPass: true,
 		},
 	}
 
@@ -49,13 +54,19 @@ func TestInsert(t *testing.T) {
 
 func TestPrefixes(t *testing.T) {
 	words := []string{"cat", "cog", "dog", "deck", "deep", "canvas", "canva"}
-
 	trie := NewTrie()
 
 	for _, w := range words {
 		trie.Insert(w)
 	}
 
-	results := trie.Prefixes("ca")
-	fmt.Println(results)
+	want := []string{"cat", "canvas", "canva"}
+	got := trie.Prefixes("ca")
+
+	slices.Sort(want)
+	slices.Sort(got)
+
+	if !slices.Equal(want, got) {
+		t.Errorf("slices should be equal got: %v want: %v", got, want)
+	}
 }
