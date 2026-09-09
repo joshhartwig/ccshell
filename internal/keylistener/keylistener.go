@@ -103,11 +103,11 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 			default: // multiple matches
 				if keyState.lastKeyTab {
 					keyState.lastKeyTab = false
-					fmt.Fprintf(ks.out, "\a")
 					fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(matches, " "))
 					ks.Redraw(prompt, buf)
 				} else {
 					keyState.lastKeyTab = true
+					fmt.Fprintf(ks.out, "\a")
 				}
 			}
 
