@@ -6,15 +6,46 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"golang.org/x/term"
+)
+
+const (
+	keyCtrlC     = 3
+	keyCtrlD     = 4
+	keyCtrlU     = 21
+	keyEnter     = '\r'
+	keyLF        = '\n'
+	keyEscape    = 27
+	keyBackspace = 127
+	keyUnknown   = 0xd800 /* UTF-16 surrogate area */ + iota
+	keyUp
+	keyDown
+	keyLeft
+	keyRight
+	keyAltLeft
+	keyAltRight
+	keyHome
+	keyEnd
+	keyDeleteWord
+	keyDeleteLine
+	keyDelete
+	keyClearScreen
+	keyTranspose
+	keyPasteStart
+	keyPasteEnd
 )
 
 type KeyStrokeListener struct {
 	in        *os.File
 	out       io.Writer
 	completer func(prefix string) []string
+}
+
+type keyState struct {
+	lastKeyTab bool
 }
 
 // NewKeyStrokeListener creates a new keystrokeListener for shell required for autocomplete support
@@ -37,12 +68,16 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 	}
 	defer term.Restore(int(ks.in.Fd()), oldState)
 
-	// print the prompt
-	fmt.Fprint(ks.out, prompt)
+	// init keystate for double tab tracking
+	keyState := keyState{
+		lastKeyTab: false,
+	}
+	fmt.Fprint(ks.out, prompt) // print the prompt
 
-	// read input 1 byte at a time
-	var buf []rune
+	var buf []rune // tracks input
 	reader := bufio.NewReader(ks.in)
+
+	// get matches in path for tab completion
 
 	for {
 		r, _, err := reader.ReadRune()
@@ -57,20 +92,27 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 
 		case '\t': // fetch completions and iterate through them on each tab
 			matches := ks.completer(string(buf))
+			slices.Sort(matches)
 			switch len(matches) {
-			case 0: // do nothing
+			case 0: // no matches play 'bell'
 				fmt.Fprintf(ks.out, "\a")
 			case 1:
 				buf = []rune(matches[0]) // find the first relevant keyword
 				buf = append(buf, ' ')   // add a space to the match
 				ks.Redraw(prompt, buf)   // redraw the prompt + matched buffer + space
-			default:
-				fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(matches, " "))
-				ks.Redraw(prompt, buf)
+			default: // multiple matches
+				if keyState.lastKeyTab {
+					keyState.lastKeyTab = false
+					fmt.Fprintf(ks.out, "\a")
+					fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(matches, " "))
+					ks.Redraw(prompt, buf)
+				} else {
+					keyState.lastKeyTab = true
+				}
 			}
 
 		// support for backspace in terminal
-		case 127, '\b':
+		case keyBackspace, '\b':
 			if len(buf) > 0 {
 				buf = buf[:len(buf)-1]
 				fmt.Fprint(ks.out, "\b \b")
@@ -81,6 +123,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 		// append rune and print
 		default:
 			buf = append(buf, r)
+			keyState.lastKeyTab = false
 			fmt.Fprintf(ks.out, "%c", r)
 		}
 	}
