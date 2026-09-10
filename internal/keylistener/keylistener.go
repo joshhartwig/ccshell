@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/codecrafters-io/shell-starter-go/internal/completions"
 	"golang.org/x/term"
 )
 
@@ -107,7 +108,9 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 					ks.Redraw(prompt, buf)
 				} else {
 					keyState.lastKeyTab = true
+					buf = []rune(completions.FindLongestCommonPrefix(matches))
 					fmt.Fprintf(ks.out, "\a")
+					ks.Redraw(prompt, buf)
 				}
 			}
 

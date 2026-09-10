@@ -87,7 +87,7 @@ func dfsCollectCompletions(node *TrieNode, prefix string, results *[]string) {
 	}
 }
 
-func findLongestCommonPrefix(words []string) string {
+func FindLongestCommonPrefix(words []string) string {
 	if len(words) == 0 {
 		return ""
 	}

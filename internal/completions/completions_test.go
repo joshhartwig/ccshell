@@ -75,7 +75,7 @@ func TestFindLongestCommonPrefix(t *testing.T) {
 	input := []string{"xyz_foo", "xyz_foo_bar", "xyz_foo_baz"}
 
 	want := "xyz_foo"
-	got := findLongestCommonPrefix(input)
+	got := FindLongestCommonPrefix(input)
 
 	if want != got {
 		t.Errorf("wanted %s but got %s", want, got)
@@ -86,7 +86,7 @@ func TestFindLongestCommonPrefixSingleWord(t *testing.T) {
 	input := []string{"solo"}
 
 	want := "solo"
-	got := findLongestCommonPrefix(input)
+	got := FindLongestCommonPrefix(input)
 
 	if want != got {
 		t.Errorf("wanted %s but got %s", want, got)
@@ -97,7 +97,7 @@ func TestFindLongestCommonPrefixNoCommonPrefix(t *testing.T) {
 	input := []string{"cat", "dog", "bird"}
 
 	want := ""
-	got := findLongestCommonPrefix(input)
+	got := FindLongestCommonPrefix(input)
 
 	if want != got {
 		t.Errorf("wanted %s but got %s", want, got)
@@ -108,7 +108,7 @@ func TestFindLongestCommonPrefixEmptyInput(t *testing.T) {
 	input := []string{}
 
 	want := ""
-	got := findLongestCommonPrefix(input)
+	got := FindLongestCommonPrefix(input)
 
 	if want != got {
 		t.Errorf("wanted %s but got %s", want, got)
