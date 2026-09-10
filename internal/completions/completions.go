@@ -1,6 +1,9 @@
 package completions
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 type TrieNode struct {
 	Children  map[rune]*TrieNode
@@ -82,4 +85,24 @@ func dfsCollectCompletions(node *TrieNode, prefix string, results *[]string) {
 	for ch, next := range node.Children {
 		dfsCollectCompletions(next, prefix+string(ch), results)
 	}
+}
+
+func findLongestCommonPrefix(words []string) string {
+	if len(words) == 0 {
+		return ""
+	}
+	slices.Sort(words)
+	first := words[0]
+	last := words[len(words)-1]
+
+	var commonPrefix []rune
+	for idx, char := range first {
+		if idx > len(last)-1 {
+			return string(commonPrefix)
+		}
+		if first[idx] == last[idx] {
+			commonPrefix = append(commonPrefix, char)
+		}
+	}
+	return string(commonPrefix)
 }
