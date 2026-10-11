@@ -1,4 +1,4 @@
-package completions
+package completion
 
 import (
 	"slices"

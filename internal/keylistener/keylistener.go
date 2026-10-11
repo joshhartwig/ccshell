@@ -9,8 +9,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/codecrafters-io/shell-starter-go/internal/completions"
 	"golang.org/x/term"
+
+	"github.com/codecrafters-io/shell-starter-go/internal/completion"
 )
 
 const (
@@ -20,6 +21,7 @@ const (
 	keyEnter     = '\r'
 	keyLF        = '\n'
 	keyEscape    = 27
+	keySpace     = ' '
 	keyBackspace = 127
 	keyUnknown   = 0xd800 /* UTF-16 surrogate area */ + iota
 	keyUp
@@ -46,7 +48,14 @@ type KeyStrokeListener struct {
 }
 
 type keyState struct {
-	lastKeyTab bool
+	lastKeyTab   bool
+	lastKeySpace bool
+}
+
+type context struct {
+	line        string
+	currentWord string
+	index       int
 }
 
 // NewKeyStrokeListener creates a new keystrokeListener for shell required for autocomplete support
@@ -71,14 +80,13 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 
 	// init keystate for double tab tracking
 	keyState := keyState{
-		lastKeyTab: false,
+		lastKeyTab:   false,
+		lastKeySpace: false,
 	}
 	fmt.Fprint(ks.out, prompt) // print the prompt
 
 	var buf []rune // tracks input
 	reader := bufio.NewReader(ks.in)
-
-	// get matches in path for tab completion
 
 	for {
 		r, _, err := reader.ReadRune()
@@ -94,6 +102,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 		case '\t': // fetch completions and iterate through them on each tab
 			matches := ks.completer(string(buf))
 			slices.Sort(matches)
+
 			switch len(matches) {
 			case 0: // no matches play 'bell'
 				fmt.Fprintf(ks.out, "\a")
@@ -108,7 +117,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 					ks.Redraw(prompt, buf)
 				} else {
 					keyState.lastKeyTab = true
-					buf = []rune(completions.FindLongestCommonPrefix(matches))
+					buf = []rune(completion.FindLongestCommonPrefix(matches))
 					fmt.Fprintf(ks.out, "\a")
 					ks.Redraw(prompt, buf)
 				}

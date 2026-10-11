@@ -13,7 +13,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/codecrafters-io/shell-starter-go/internal/completions"
+	"github.com/codecrafters-io/shell-starter-go/internal/completion"
 	"github.com/codecrafters-io/shell-starter-go/internal/keylistener"
 )
 
@@ -24,7 +24,7 @@ type Shell struct {
 	reader      io.Reader
 	writer      io.Writer
 	interceptor *interceptor
-	completer   *completions.Trie
+	completer   *completion.Trie
 }
 
 // a pipeline is a slice of commands
@@ -113,7 +113,7 @@ func New(r io.Reader, w io.Writer) *Shell {
 		reader:      r,
 		writer:      &inter,
 		interceptor: &inter,
-		completer:   completions.NewTrie(),
+		completer:   completion.NewTrie(),
 	}
 
 	s.registerBuiltins()
