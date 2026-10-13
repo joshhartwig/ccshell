@@ -42,9 +42,10 @@ const (
 )
 
 type KeyStrokeListener struct {
-	in        *os.File
-	out       io.Writer
-	completer func(prefix string) []string
+	in               *os.File
+	out              io.Writer
+	commandCompleter func(prefix string) []string
+	fileCompleter    func(prefix string) []string
 }
 
 type keyState struct {
@@ -61,9 +62,9 @@ type context struct {
 // NewKeyStrokeListener creates a new keystrokeListener for shell required for autocomplete support
 func NewKeyStrokeListener(r *os.File, w io.Writer, f func(prefix string) []string) *KeyStrokeListener {
 	return &KeyStrokeListener{
-		in:        r,
-		out:       w,
-		completer: f,
+		in:               r,
+		out:              w,
+		commandCompleter: f,
 	}
 }
 
@@ -95,12 +96,15 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 		}
 
 		switch r {
-		case '\r', '\n':
+		case keyEnter, keyLF:
 			fmt.Fprint(ks.out, "\r\n")
 			return string(buf), nil
 
 		case '\t': // fetch completions and iterate through them on each tab
-			matches := ks.completer(string(buf))
+			// TODO: if command set with space ex `cat te` -> `cat test.txt`
+			// check if command is set if len greater 2 w/ space
+
+			matches := ks.commandCompleter(string(buf))
 			slices.Sort(matches)
 
 			switch len(matches) {

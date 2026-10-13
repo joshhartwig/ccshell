@@ -47,10 +47,12 @@ func (sh *Shell) typeHandler(s stage) (result, error) {
 			if path == "" {
 				return res, fmt.Errorf("%s: not found", x)
 			}
-			res.stdOut.Write([]byte(fmt.Sprintf("%s is %s", x, path)))
+			//res.stdOut.Write([]byte(fmt.Sprintf("%s is %s", x, path)))
+			res.stdOut.Write(fmt.Appendf(nil, "%s is %s", x, path))
 			return res, nil
 		}
-		res.stdOut.Write([]byte(fmt.Sprintf("%s is a shell builtin", x)))
+		//res.stdOut.Write([]byte(fmt.Sprintf("%s is a shell builtin", x)))
+		res.stdOut.Write(fmt.Appendf(nil, "%s is a shell builtin", x))
 	}
 	return res, nil
 }
