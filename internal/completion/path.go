@@ -5,13 +5,22 @@ import (
 	"os"
 )
 
-func List(prefix string) ([]string, error) {
+func CompleteFileName(prefix string) ([]string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return []string{}, err
 	}
 
+	trie := NewTrie()
+
 	root := os.DirFS(cwd)
-	files, err := fs.Glob(root, "*.*")
-	return files, nil
+	files, err := fs.Glob(root, "*")
+	if err != nil {
+		return []string{}, err
+	}
+
+	for _, f := range files {
+		trie.Insert(f)
+	}
+	return trie.Prefixes(prefix), nil
 }

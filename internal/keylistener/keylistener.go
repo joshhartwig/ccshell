@@ -15,37 +15,17 @@ import (
 )
 
 const (
-	keyCtrlC     = 3
-	keyCtrlD     = 4
-	keyCtrlU     = 21
 	keyEnter     = '\r'
 	keyLF        = '\n'
-	keyEscape    = 27
 	keySpace     = ' '
 	keyBackspace = 127
-	keyUnknown   = 0xd800 /* UTF-16 surrogate area */ + iota
-	keyUp
-	keyDown
-	keyLeft
-	keyRight
-	keyAltLeft
-	keyAltRight
-	keyHome
-	keyEnd
-	keyDeleteWord
-	keyDeleteLine
-	keyDelete
-	keyClearScreen
-	keyTranspose
-	keyPasteStart
-	keyPasteEnd
 )
 
 type KeyStrokeListener struct {
 	in               *os.File
 	out              io.Writer
 	commandCompleter func(prefix string) []string
-	fileCompleter    func(prefix string) []string
+	fileCompleter    func(prefix string) ([]string, error)
 }
 
 type keyState struct {
@@ -53,18 +33,13 @@ type keyState struct {
 	lastKeySpace bool
 }
 
-type context struct {
-	line        string
-	currentWord string
-	index       int
-}
-
 // NewKeyStrokeListener creates a new keystrokeListener for shell required for autocomplete support
-func NewKeyStrokeListener(r *os.File, w io.Writer, f func(prefix string) []string) *KeyStrokeListener {
+func NewKeyStrokeListener(r *os.File, w io.Writer, cc func(prefix string) []string, fc func(prefix string) ([]string, error)) *KeyStrokeListener {
 	return &KeyStrokeListener{
 		in:               r,
 		out:              w,
-		commandCompleter: f,
+		commandCompleter: cc,
+		fileCompleter:    fc,
 	}
 }
 
@@ -101,9 +76,33 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 			return string(buf), nil
 
 		case '\t': // fetch completions and iterate through them on each tab
-			// TODO: if command set with space ex `cat te` -> `cat test.txt`
-			// check if command is set if len greater 2 w/ space
+			if commandAlreadyExists(buf) {
+				partial := string(buf[strings.LastIndex(string(buf), " ")+1:])
+				command := string(buf[:strings.LastIndex(string(buf), " ")+1])
+				files, _ := ks.fileCompleter(partial)
+				slices.Sort(files)
 
+				switch len(files) {
+				case 0:
+					fmt.Fprintf(ks.out, "\a") // bell no match
+				case 1:
+					buf = []rune(command + files[0]) // find the first relevant keyword
+					buf = append(buf, ' ')           // add a space to the match
+					ks.Redraw(prompt, buf)           // redraw the prompt + matched buffer + space
+				default:
+					if keyState.lastKeyTab {
+						keyState.lastKeyTab = false
+						fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(files, " "))
+						ks.Redraw(prompt, buf)
+					} else {
+						keyState.lastKeyTab = true
+						buf = []rune(command + completion.FindLongestCommonPrefix(files))
+						fmt.Fprintf(ks.out, "\a")
+						ks.Redraw(prompt, buf)
+					}
+				}
+				break
+			}
 			matches := ks.commandCompleter(string(buf))
 			slices.Sort(matches)
 
@@ -148,4 +147,24 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 // Redraw draws the prompt and buffer input to io.writer
 func (ks *KeyStrokeListener) Redraw(prompt string, buf []rune) {
 	fmt.Fprintf(ks.out, "\r\033[K%s%s", prompt, string(buf))
+}
+
+// isCommandFileCompletion returns true if function determines we should be in file completion mode
+// should have a command and a space then a rune
+func commandAlreadyExists(buf []rune) bool {
+	stringBuf := string(buf)
+	// if we have a space
+	if strings.Contains(stringBuf, " ") {
+		// if the space is not the first char
+		if stringBuf[0] != keySpace || stringBuf[len(stringBuf)-1] != keySpace {
+			// check if first char after space is
+			idx := strings.LastIndex(stringBuf, " ")
+			if idx+1 <= len(stringBuf) {
+				return true
+			}
+			return false
+		}
+		return false
+	}
+	return false
 }

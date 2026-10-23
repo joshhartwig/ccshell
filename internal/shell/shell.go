@@ -148,7 +148,7 @@ func (sh *Shell) registerBuiltins() {
 
 // test function for putting terminal in raw mode
 func (sh *Shell) RunKeystrokeMode() {
-	ks := keylistener.NewKeyStrokeListener(sh.reader.(*os.File), sh.writer, sh.completer.Prefixes)
+	ks := keylistener.NewKeyStrokeListener(sh.reader.(*os.File), sh.writer, sh.completer.Prefixes, completion.CompleteFileName)
 	for {
 		if !sh.interceptor.LastByteNewLine() {
 			fmt.Fprintf(sh.writer, "\r\n")
