@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-func CompleteFileName(prefix string) ([]string, error) {
+func CompleteFileName(filename string) ([]string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return []string{}, err
@@ -22,5 +22,5 @@ func CompleteFileName(prefix string) ([]string, error) {
 	for _, f := range files {
 		trie.Insert(f)
 	}
-	return trie.Prefixes(prefix), nil
+	return trie.Prefixes(filename), nil
 }
