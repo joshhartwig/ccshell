@@ -76,19 +76,33 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 			return string(buf), nil
 
 		case '\t': // fetch completions and iterate through them on each tab
+
+			// command exists already
 			if commandAlreadyExists(buf) {
-				partial := string(buf[strings.LastIndex(string(buf), " ")+1:])
-				command := string(buf[:strings.LastIndex(string(buf), " ")+1])
-				files, _ := ks.fileCompleter(partial)
-				slices.Sort(files)
+				stringBuffer := string(buf)
+
+				cmdIdx := strings.LastIndex(stringBuffer, " ")        // fetch the pos of the last space
+				fullPath := strings.LastIndex(stringBuffer, " ") + 1  // everything after last space
+				seperator := strings.LastIndex(stringBuffer, "/") + 1 // everything after the last /
+				folderPath := stringBuffer[fullPath:seperator]        // text between first space and last / ex /app/
+
+				command := stringBuffer[:cmdIdx+1] // fetch text before space ex 'cat' <--
+				partial := stringBuffer[cmdIdx+1:] // fetch text after space ex cat --> '/app/mai'
+
+				files, err := ks.fileCompleter(partial) // fetch all files in the path
+				if err != nil {
+					break // unable to fetch folder path do nothing
+				}
+
+				slices.Sort(files) // sort found files
 
 				switch len(files) {
 				case 0:
-					fmt.Fprintf(ks.out, "\a") // bell no match
+					fmt.Fprintf(ks.out, "\a") // no match bell
 				case 1:
-					buf = []rune(command + files[0]) // find the first relevant keyword
-					buf = append(buf, ' ')           // add a space to the match
-					ks.Redraw(prompt, buf)           // redraw the prompt + matched buffer + space
+					buf = []rune(command + folderPath + files[0]) // find the first relevant keyword
+					buf = append(buf, ' ')                        // add a space to the match
+					ks.Redraw(prompt, buf)                        // redraw the prompt + matched buffer + space
 				default:
 					if keyState.lastKeyTab {
 						keyState.lastKeyTab = false
@@ -101,7 +115,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 						ks.Redraw(prompt, buf)
 					}
 				}
-				break
+				//break
 			}
 			matches := ks.commandCompleter(string(buf))
 			slices.Sort(matches)
