@@ -4,17 +4,18 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 func CompleteFileName(path string) ([]string, error) {
-	var dir, prefix, cwd string
+	var dir, file, cwd string
 
-	cwd, _ = os.Getwd()
+	cwd, err := os.Getwd()
+	if err != nil {
+		return []string{}, err
+	}
+
 	dir = filepath.Dir(filepath.Clean(cwd + path))
-	prefix = filepath.Base(path)
-	// split on prefix after last /
-	prefix = path[strings.LastIndex(path, "/")+1:]
+	_, file = filepath.Split(path)
 
 	files, err := fs.Glob(os.DirFS(dir), "*")
 	if err != nil {
@@ -23,8 +24,16 @@ func CompleteFileName(path string) ([]string, error) {
 
 	trie := NewTrie()
 	for _, f := range files {
+		if filepath.Ext(f) == "" {
+			f += "/"
+		}
 		trie.Insert(f)
-
 	}
-	return trie.Prefixes(prefix), nil
+
+	// result := trie.Prefixes(file)
+	// if len(result) == 0 {
+	// 	return trie.Prefixes(""), nil
+	// }
+
+	return trie.Prefixes(file), nil
 }

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strings"
 
@@ -88,7 +89,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 			partial := stringBuffer[cmdIdx+1:] // fetch text after space ex cat --> '/app/mai'
 
 			// if we already have a command and tab is pressed, enter file completion mode
-			if commandAlreadyExists(buf) {
+			if commandExists(buf) {
 				files, err := ks.fileCompleter(partial) // fetch all files in the path
 				if err != nil {
 					break // unable to fetch folder path do nothing
@@ -100,8 +101,10 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 				case 0: // no match play bell
 					fmt.Fprintf(ks.out, "\a")
 				case 1:
+					if filepath.Ext(files[0]) != "" {
+						files[0] = files[0] + " "
+					}
 					buf = []rune(command + folderPath + files[0]) // combine command + folderpath + files
-					buf = append(buf, ' ')
 					ks.Redraw(prompt, buf)
 				default: // multiple files display them on the next line
 					if keyState.lastKeyTab {
@@ -165,7 +168,7 @@ func (ks *KeyStrokeListener) Redraw(prompt string, buf []rune) {
 
 // isCommandFileCompletion returns true if function determines we should be in file completion mode
 // should have a command and a space then a rune
-func commandAlreadyExists(buf []rune) bool {
+func commandExists(buf []rune) bool {
 	stringBuf := string(buf)
 	// if we have a space
 	if strings.Contains(stringBuf, " ") {
