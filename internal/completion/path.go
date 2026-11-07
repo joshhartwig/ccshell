@@ -1,7 +1,6 @@
 package completion
 
 import (
-	"fmt"
 	"io/fs"
 	"os"
 	"strings"
@@ -31,8 +30,6 @@ func CompleteFileName(path string) ([]string, error) {
 	if err != nil {
 		return []string{}, err
 	}
-
-	fmt.Printf(" -- dir:%s prefix:%s files:%s", dir, prefix, files)
 
 	trie := NewTrie()
 	for _, f := range files {

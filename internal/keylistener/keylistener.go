@@ -74,7 +74,8 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 			fmt.Fprint(ks.out, "\r\n")
 			return string(buf), nil
 
-		case '\t': // fetch completions and iterate through them on each tab
+		// tab completions
+		case '\t':
 
 			stringBuffer := string(buf)
 
@@ -86,6 +87,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 			command := stringBuffer[:cmdIdx+1] // fetch text before space ex 'cat' <--
 			partial := stringBuffer[cmdIdx+1:] // fetch text after space ex cat --> '/app/mai'
 
+			// if we already have a command and tab is pressed, enter file completion mode
 			if commandAlreadyExists(buf) {
 				files, err := ks.fileCompleter(partial) // fetch all files in the path
 				if err != nil {
