@@ -24,8 +24,8 @@ const (
 type KeyStrokeListener struct {
 	in               *os.File
 	out              io.Writer
-	commandCompleter func(prefix string) []string
-	fileCompleter    func(prefix string) ([]string, error)
+	commandCompleter func(prefix string) []string          // used for auto complete on commands
+	fileCompleter    func(prefix string) ([]string, error) // used for auto complete on files
 }
 
 type keyState struct {
@@ -47,12 +47,11 @@ func NewKeyStrokeListener(r *os.File, w io.Writer, cc func(prefix string) []stri
 // autocomplete support as part of codecrafters https://app.codecrafters.io/courses/shell/stages/qp2
 // this function supports input and checks if tab, backspace, enter, crtl-c is inputted as well as return string
 func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
-	// set terminal into raw mode
-	oldState, err := term.MakeRaw(int(ks.in.Fd()))
+	oldState, err := term.MakeRaw(int(ks.in.Fd())) // set terminal into raw mode
 	if err != nil {
 		return "", err
 	}
-	defer term.Restore(int(ks.in.Fd()), oldState)
+	defer term.Restore(int(ks.in.Fd()), oldState) // exit raw mode
 
 	// init keystate for double tab tracking
 	keyState := keyState{
@@ -77,18 +76,17 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 
 		case '\t': // fetch completions and iterate through them on each tab
 
-			// command exists already
+			stringBuffer := string(buf)
+
+			cmdIdx := strings.LastIndex(stringBuffer, " ")        // fetch the pos of the last space
+			fullPath := strings.LastIndex(stringBuffer, " ") + 1  // everything after last space
+			seperator := strings.LastIndex(stringBuffer, "/") + 1 // everything after the last /
+			folderPath := stringBuffer[fullPath:seperator]        // text between first space and last / ex /app/
+
+			command := stringBuffer[:cmdIdx+1] // fetch text before space ex 'cat' <--
+			partial := stringBuffer[cmdIdx+1:] // fetch text after space ex cat --> '/app/mai'
+
 			if commandAlreadyExists(buf) {
-				stringBuffer := string(buf)
-
-				cmdIdx := strings.LastIndex(stringBuffer, " ")        // fetch the pos of the last space
-				fullPath := strings.LastIndex(stringBuffer, " ") + 1  // everything after last space
-				seperator := strings.LastIndex(stringBuffer, "/") + 1 // everything after the last /
-				folderPath := stringBuffer[fullPath:seperator]        // text between first space and last / ex /app/
-
-				command := stringBuffer[:cmdIdx+1] // fetch text before space ex 'cat' <--
-				partial := stringBuffer[cmdIdx+1:] // fetch text after space ex cat --> '/app/mai'
-
 				files, err := ks.fileCompleter(partial) // fetch all files in the path
 				if err != nil {
 					break // unable to fetch folder path do nothing
@@ -97,13 +95,13 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 				slices.Sort(files) // sort found files
 
 				switch len(files) {
-				case 0:
-					fmt.Fprintf(ks.out, "\a") // no match bell
+				case 0: // no match play bell
+					fmt.Fprintf(ks.out, "\a")
 				case 1:
-					buf = []rune(command + folderPath + files[0]) // find the first relevant keyword
-					buf = append(buf, ' ')                        // add a space to the match
-					ks.Redraw(prompt, buf)                        // redraw the prompt + matched buffer + space
-				default:
+					buf = []rune(command + folderPath + files[0]) // combine command + folderpath + files
+					buf = append(buf, ' ')
+					ks.Redraw(prompt, buf)
+				default: // multiple files display them on the next line
 					if keyState.lastKeyTab {
 						keyState.lastKeyTab = false
 						fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(files, " "))
@@ -115,28 +113,28 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 						ks.Redraw(prompt, buf)
 					}
 				}
-				//break
-			}
-			matches := ks.commandCompleter(string(buf))
-			slices.Sort(matches)
+			} else {
+				matches := ks.commandCompleter(command)
+				slices.Sort(matches)
 
-			switch len(matches) {
-			case 0: // no matches play 'bell'
-				fmt.Fprintf(ks.out, "\a")
-			case 1:
-				buf = []rune(matches[0]) // find the first relevant keyword
-				buf = append(buf, ' ')   // add a space to the match
-				ks.Redraw(prompt, buf)   // redraw the prompt + matched buffer + space
-			default: // multiple matches
-				if keyState.lastKeyTab {
-					keyState.lastKeyTab = false
-					fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(matches, " "))
-					ks.Redraw(prompt, buf)
-				} else {
-					keyState.lastKeyTab = true
-					buf = []rune(completion.FindLongestCommonPrefix(matches))
+				switch len(matches) {
+				case 0: // no matches play 'bell'
 					fmt.Fprintf(ks.out, "\a")
-					ks.Redraw(prompt, buf)
+				case 1:
+					buf = []rune(matches[0]) // find the first relevant keyword
+					buf = append(buf, ' ')   // add a space to the match
+					ks.Redraw(prompt, buf)   // redraw the prompt + matched buffer + space
+				default: // multiple matches
+					if keyState.lastKeyTab {
+						keyState.lastKeyTab = false
+						fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(matches, " "))
+						ks.Redraw(prompt, buf)
+					} else {
+						keyState.lastKeyTab = true
+						buf = []rune(completion.FindLongestCommonPrefix(matches))
+						fmt.Fprintf(ks.out, "\a")
+						ks.Redraw(prompt, buf)
+					}
 				}
 			}
 
