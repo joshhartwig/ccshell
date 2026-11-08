@@ -77,13 +77,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 
 		// tab completions
 		case '\t':
-
 			stringBuffer := string(buf)
-
-			// cmdIdx := strings.LastIndex(stringBuffer, " ")        // fetch the pos of the last space
-			// fullPath := strings.LastIndex(stringBuffer, " ") + 1  // everything after last space
-			// seperator := strings.LastIndex(stringBuffer, "/") + 1 // everything after the last /
-			// folderPath := stringBuffer[fullPath:seperator]        // text between first space and last / ex /app/
 
 			spaceIdx := strings.LastIndex(stringBuffer, " ")
 			command := stringBuffer[:spaceIdx+1] // fetch text before space ex 'cat' <--
@@ -121,28 +115,28 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 						ks.Redraw(prompt, buf)
 					}
 				}
-			} else {
-				matches := ks.commandCompleter(command)
-				slices.Sort(matches)
+			}
 
-				switch len(matches) {
-				case 0: // no matches play 'bell'
+			matches := ks.commandCompleter(stringBuffer)
+			slices.Sort(matches)
+
+			switch len(matches) {
+			case 0: // no matches play 'bell'
+				fmt.Fprintf(ks.out, "\a")
+			case 1:
+				buf = []rune(matches[0]) // find the first relevant keyword
+				buf = append(buf, ' ')   // add a space to the match
+				ks.Redraw(prompt, buf)   // redraw the prompt + matched buffer + space
+			default: // multiple matches
+				if keyState.lastKeyTab {
+					keyState.lastKeyTab = false
+					fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(matches, " "))
+					ks.Redraw(prompt, buf)
+				} else {
+					keyState.lastKeyTab = true
+					buf = []rune(completion.FindLongestCommonPrefix(matches))
 					fmt.Fprintf(ks.out, "\a")
-				case 1:
-					buf = []rune(matches[0]) // find the first relevant keyword
-					buf = append(buf, ' ')   // add a space to the match
-					ks.Redraw(prompt, buf)   // redraw the prompt + matched buffer + space
-				default: // multiple matches
-					if keyState.lastKeyTab {
-						keyState.lastKeyTab = false
-						fmt.Fprintf(ks.out, "\r\n%s\r\n", strings.Join(matches, " "))
-						ks.Redraw(prompt, buf)
-					} else {
-						keyState.lastKeyTab = true
-						buf = []rune(completion.FindLongestCommonPrefix(matches))
-						fmt.Fprintf(ks.out, "\a")
-						ks.Redraw(prompt, buf)
-					}
+					ks.Redraw(prompt, buf)
 				}
 			}
 
