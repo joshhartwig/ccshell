@@ -14,7 +14,7 @@ func TestNew(t *testing.T) {
 
 		output := new(bytes.Buffer)
 		shell := New(input, output)
-		shell.Run()
+		shell.RunKeystrokeMode()
 
 		want := "$ exit is a shell builtin\n"
 		got, err := output.ReadString('\n')
@@ -31,7 +31,7 @@ func TestNew(t *testing.T) {
 
 		output := new(bytes.Buffer)
 		shell := New(input, output)
-		shell.Run()
+		shell.RunKeystrokeMode()
 
 		want := "$ cat: noexist: No such file or directory\n$ "
 		got := output.String()
