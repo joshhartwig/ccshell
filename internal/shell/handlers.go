@@ -84,9 +84,9 @@ func (sh *Shell) changeDirHandler(s stage) (result, error) {
 
 func (sh *Shell) completeHandler(s stage) (result, error) {
 	res := result{}
-	for i, x := range s.args {
-		if i == 0 && x == "-p" {
-			res.stdOut.Write(fmt.Appendf(nil, "%s"))
+	if len(s.args) > 1 {
+		if s.args[0] == "-p" {
+			res.stdOut.Write(fmt.Appendf(nil, "complete: %s: no completion specification", s.args[1]))
 		}
 	}
 	return res, nil
