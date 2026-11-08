@@ -101,7 +101,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 				case 0: // no match play bell
 					fmt.Fprintf(ks.out, "\a")
 				case 1:
-					if filepath.Ext(files[0]) != "" {
+					if filepath.Ext(files[0]) != "" { // if the extension is present its file add a space
 						files[0] = files[0] + " "
 					}
 					buf = []rune(command + folderPath + files[0]) // combine command + folderpath + files

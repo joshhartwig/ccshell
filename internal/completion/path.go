@@ -1,39 +1,36 @@
 package completion
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func CompleteFileName(path string) ([]string, error) {
-	var dir, file, cwd string
-
 	cwd, err := os.Getwd()
 	if err != nil {
-		return []string{}, err
+		return nil, err
 	}
 
-	dir = filepath.Dir(filepath.Clean(cwd + path))
-	_, file = filepath.Split(path)
+	dir, file := filepath.Split(path)
+	dir = strings.TrimPrefix(dir, string(filepath.Separator))
+	searchDir := filepath.Join(cwd, dir)
 
-	files, err := fs.Glob(os.DirFS(dir), "*")
+	entries, err := os.ReadDir(searchDir)
 	if err != nil {
 		return []string{}, err
 	}
 
 	trie := NewTrie()
-	for _, f := range files {
-		if filepath.Ext(f) == "" {
-			f += "/"
-		}
-		trie.Insert(f)
-	}
+	for _, entry := range entries {
+		name := entry.Name()
 
-	// result := trie.Prefixes(file)
-	// if len(result) == 0 {
-	// 	return trie.Prefixes(""), nil
-	// }
+		if entry.IsDir() {
+			name += "/"
+		}
+
+		trie.Insert(name)
+	}
 
 	return trie.Prefixes(file), nil
 }
