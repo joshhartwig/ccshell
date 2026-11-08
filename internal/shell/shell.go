@@ -1,7 +1,6 @@
 package shell
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -133,6 +132,7 @@ func (sh *Shell) registerBuiltins() {
 	sh.Builtins["echo"] = sh.echoHandler
 	sh.Builtins["type"] = sh.typeHandler
 	sh.Builtins["cd"] = sh.changeDirHandler
+	sh.Builtins["completer"] = sh.completerHandler
 
 	sh.completer.Insert("exit")
 	sh.completer.Insert("pwd")
@@ -159,27 +159,6 @@ func (sh *Shell) RunKeystrokeMode() {
 			return
 		}
 		sh.processLine(str)
-	}
-}
-
-// run runs the shell loop
-func (sh *Shell) Run() {
-	scanner := bufio.NewScanner(sh.reader)
-
-	// keep looping and getting input
-	for {
-		if sh.interceptor.LastByteNewLine() {
-			fmt.Fprint(sh.writer, "$ ")
-		} else {
-			fmt.Fprintf(sh.writer, "\n")
-			fmt.Fprint(sh.writer, "$ ")
-		}
-		if !scanner.Scan() {
-			break
-		}
-
-		sh.interceptor.lastByte = '\n'
-		sh.processLine(scanner.Text())
 	}
 }
 
