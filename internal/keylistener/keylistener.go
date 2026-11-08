@@ -80,13 +80,16 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 
 			stringBuffer := string(buf)
 
-			cmdIdx := strings.LastIndex(stringBuffer, " ")        // fetch the pos of the last space
-			fullPath := strings.LastIndex(stringBuffer, " ") + 1  // everything after last space
-			seperator := strings.LastIndex(stringBuffer, "/") + 1 // everything after the last /
-			folderPath := stringBuffer[fullPath:seperator]        // text between first space and last / ex /app/
+			// cmdIdx := strings.LastIndex(stringBuffer, " ")        // fetch the pos of the last space
+			// fullPath := strings.LastIndex(stringBuffer, " ") + 1  // everything after last space
+			// seperator := strings.LastIndex(stringBuffer, "/") + 1 // everything after the last /
+			// folderPath := stringBuffer[fullPath:seperator]        // text between first space and last / ex /app/
 
-			command := stringBuffer[:cmdIdx+1] // fetch text before space ex 'cat' <--
-			partial := stringBuffer[cmdIdx+1:] // fetch text after space ex cat --> '/app/mai'
+			spaceIdx := strings.LastIndex(stringBuffer, " ")
+			command := stringBuffer[:spaceIdx+1] // fetch text before space ex 'cat' <--
+			partial := stringBuffer[spaceIdx+1:] // fetch text after space ex cat --> '/app/mai'
+
+			folderPath, _ := filepath.Split(partial)
 
 			// if we already have a command and tab is pressed, enter file completion mode
 			if commandExists(buf) {

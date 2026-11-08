@@ -38,7 +38,7 @@ func TestIsCommandFileCompletion(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		got := commandAlreadyExists(tt.input)
+		got := commandExists(tt.input)
 		if got != tt.wantResult {
 			t.Errorf("test %d failed wanted:%v got: %v", i, tt.wantResult, got)
 		}
