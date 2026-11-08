@@ -132,7 +132,7 @@ func (sh *Shell) registerBuiltins() {
 	sh.Builtins["echo"] = sh.echoHandler
 	sh.Builtins["type"] = sh.typeHandler
 	sh.Builtins["cd"] = sh.changeDirHandler
-	sh.Builtins["completer"] = sh.completerHandler
+	sh.Builtins["complete"] = sh.completeHandler
 
 	sh.completer.Insert("exit")
 	sh.completer.Insert("pwd")

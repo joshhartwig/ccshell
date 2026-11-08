@@ -82,7 +82,7 @@ func (sh *Shell) changeDirHandler(s stage) (result, error) {
 	return result{}, nil
 }
 
-func (sh *Shell) completerHandler(stage stage) (result, error) {
+func (sh *Shell) completeHandler(stage stage) (result, error) {
 	res := result{}
 	return res, nil
 }
