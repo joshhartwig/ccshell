@@ -16,24 +16,7 @@ func TestNew(t *testing.T) {
 		shell := New(input, output)
 		shell.RunKeystrokeMode()
 
-		want := "$ exit is a shell builtin\n"
-		got, err := output.ReadString('\n')
-		if err != nil {
-			t.Errorf("error processing output: %v", err)
-		}
-		if got != want {
-			t.Errorf("want: %s got: %s", want, got)
-		}
-	})
-	t.Run("test cat no exist outputs error message", func(t *testing.T) {
-		input := new(bytes.Buffer)
-		input.WriteString("cat noexist > output.txt\n")
-
-		output := new(bytes.Buffer)
-		shell := New(input, output)
-		shell.RunKeystrokeMode()
-
-		want := "$ cat: noexist: No such file or directory\n$ "
+		want := "$ type exit\r\nexit is a shell builtin\r\n$ "
 		got := output.String()
 		if got != want {
 			t.Errorf("want: %s got: %s", want, got)

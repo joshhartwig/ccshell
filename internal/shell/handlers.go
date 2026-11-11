@@ -39,7 +39,7 @@ func (sh *Shell) typeHandler(s stage) (result, error) {
 			return res, fmt.Errorf("type requires one or more arguments") // stop empty type commands
 		}
 
-		_, found := sh.Builtins[x] // look for built in commands
+		_, found := sh.builtins[x] // look for built in commands
 		if !found {
 			// look for executable in PATH
 
@@ -88,6 +88,12 @@ func (sh *Shell) completeHandler(s stage) (result, error) {
 		if s.args[0] == "-p" {
 			res.stdOut.Write(fmt.Appendf(nil, "complete: %s: no completion specification", s.args[1]))
 		}
+		if s.args[0] == "-C" {
+			automation := s.args[1]
+			command := s.args[2]
+			res.stdOut.Write(fmt.Appendf(nil, "complete: automation:%s command:%s", automation, command))
+		}
+
 	}
 	return res, nil
 }

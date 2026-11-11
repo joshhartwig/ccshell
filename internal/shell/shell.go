@@ -17,13 +17,13 @@ import (
 )
 
 type Shell struct {
-	Builtins    map[string]func(stage stage) (result, error) //command and associate functions
-	Paths       []string                                     // used to access PATH folders
-	WorkingDir  string                                       // keeps track of current working directory
-	reader      io.Reader
-	writer      io.Writer
-	interceptor *interceptor
-	completer   *completion.Trie
+	builtins     map[string]func(stage stage) (result, error) //command and associate functions
+	paths        []string                                     // used to access PATH folders
+	workingDir   string                                       // keeps track of current working directory
+	reader       io.Reader
+	writer       io.Writer
+	interceptor  *interceptor
+	autoComplete *completion.Trie
 }
 
 // a pipeline is a slice of commands
@@ -95,7 +95,7 @@ func (sh *Shell) ParsePath(str string) {
 	seperator := os.PathListSeparator
 	folders := strings.SplitSeq(str, string(seperator))
 	for f := range folders {
-		sh.Paths = append(sh.Paths, f)
+		sh.paths = append(sh.paths, f)
 	}
 }
 
@@ -107,17 +107,17 @@ func New(r io.Reader, w io.Writer) *Shell {
 	}
 
 	s := Shell{
-		Builtins:    make(map[string]func(s stage) (result, error)),
-		Paths:       make([]string, 0),
-		reader:      r,
-		writer:      &inter,
-		interceptor: &inter,
-		completer:   completion.NewTrie(),
+		builtins:     make(map[string]func(s stage) (result, error)),
+		paths:        make([]string, 0),
+		reader:       r,
+		writer:       &inter,
+		interceptor:  &inter,
+		autoComplete: completion.NewTrie(),
 	}
 
 	s.registerBuiltins()
 	wd, _ := os.Getwd()
-	s.WorkingDir = wd
+	s.workingDir = wd
 
 	path := os.Getenv("PATH")
 	s.ParsePath(path)
@@ -127,28 +127,28 @@ func New(r io.Reader, w io.Writer) *Shell {
 
 // registers commands for the shell
 func (sh *Shell) registerBuiltins() {
-	sh.Builtins["exit"] = sh.exitHandler
-	sh.Builtins["pwd"] = sh.pwdHandler
-	sh.Builtins["echo"] = sh.echoHandler
-	sh.Builtins["type"] = sh.typeHandler
-	sh.Builtins["cd"] = sh.changeDirHandler
-	sh.Builtins["complete"] = sh.completeHandler
+	sh.builtins["exit"] = sh.exitHandler
+	sh.builtins["pwd"] = sh.pwdHandler
+	sh.builtins["echo"] = sh.echoHandler
+	sh.builtins["type"] = sh.typeHandler
+	sh.builtins["cd"] = sh.changeDirHandler
+	sh.builtins["complete"] = sh.completeHandler
 
-	sh.completer.Insert("exit")
-	sh.completer.Insert("pwd")
-	sh.completer.Insert("echo")
-	sh.completer.Insert("type")
-	sh.completer.Insert("cd")
+	sh.autoComplete.Insert("exit")
+	sh.autoComplete.Insert("pwd")
+	sh.autoComplete.Insert("echo")
+	sh.autoComplete.Insert("type")
+	sh.autoComplete.Insert("cd")
 
 	// adds all exes in path
 	for _, e := range sh.findAllExeOSPath() {
-		sh.completer.Insert(e)
+		sh.autoComplete.Insert(e)
 	}
 }
 
 // test function for putting terminal in raw mode
 func (sh *Shell) RunKeystrokeMode() {
-	ks := keylistener.NewKeyStrokeListener(sh.reader.(*os.File), sh.writer, sh.completer.Prefixes, completion.CompleteFileName)
+	ks := keylistener.NewKeyStrokeListener(sh.reader, sh.writer, sh.autoComplete.Prefixes, completion.CompleteFileName)
 	for {
 		if !sh.interceptor.LastByteNewLine() {
 			fmt.Fprintf(sh.writer, "\r\n")
@@ -336,7 +336,7 @@ func createPipeline(tokens []string, sh Shell) (pipeline, error) {
 // process pipeline works through each stage and executes the functions
 func (sh *Shell) processPipeline(pipeline pipeline) error {
 	for _, stage := range pipeline.stages {
-		f, ok := sh.Builtins[stage.name]
+		f, ok := sh.builtins[stage.name]
 		if !ok {
 			path := sh.findExePath(stage.name)
 			if path == "" {

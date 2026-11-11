@@ -23,7 +23,8 @@ const (
 )
 
 type KeyStrokeListener struct {
-	in               *os.File
+	in               *bufio.Reader
+	raw              *os.File
 	out              io.Writer
 	commandCompleter func(prefix string) []string          // used for auto complete on commands
 	fileCompleter    func(prefix string) ([]string, error) // used for auto complete on files
@@ -35,24 +36,29 @@ type keyState struct {
 }
 
 // NewKeyStrokeListener creates a new keystrokeListener for shell required for autocomplete support
-func NewKeyStrokeListener(r *os.File, w io.Writer, cc func(prefix string) []string, fc func(prefix string) ([]string, error)) *KeyStrokeListener {
-	return &KeyStrokeListener{
-		in:               r,
+func NewKeyStrokeListener(r io.Reader, w io.Writer, cc func(prefix string) []string, fc func(prefix string) ([]string, error)) *KeyStrokeListener {
+	ks := &KeyStrokeListener{
+		in:               bufio.NewReader(r),
 		out:              w,
 		commandCompleter: cc,
 		fileCompleter:    fc,
 	}
+
+	if f, ok := r.(*os.File); ok {
+		ks.raw = f
+	}
+	return ks
 }
 
-// HandleInput puts the terminal into 'raw' mode which is required to capture keystrokes that is needed for
-// autocomplete support as part of codecrafters https://app.codecrafters.io/courses/shell/stages/qp2
-// this function supports input and checks if tab, backspace, enter, crtl-c is inputted as well as return string
 func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
-	oldState, err := term.MakeRaw(int(ks.in.Fd())) // set terminal into raw mode
-	if err != nil {
-		return "", err
+	if ks.raw != nil && term.IsTerminal(int(ks.raw.Fd())) {
+		old, err := term.MakeRaw(int(ks.raw.Fd()))
+		if err != nil {
+			return "", err
+		}
+
+		defer term.Restore(int(ks.raw.Fd()), old)
 	}
-	defer term.Restore(int(ks.in.Fd()), oldState) // exit raw mode
 
 	// init keystate for double tab tracking
 	keyState := keyState{
@@ -62,7 +68,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 	fmt.Fprint(ks.out, prompt) // print the prompt
 
 	var buf []rune // tracks input
-	reader := bufio.NewReader(ks.in)
+	reader := ks.in
 
 	for {
 		r, _, err := reader.ReadRune()
@@ -115,6 +121,7 @@ func (ks *KeyStrokeListener) HandleInput(prompt string) (string, error) {
 						ks.Redraw(prompt, buf)
 					}
 				}
+				break
 			}
 
 			matches := ks.commandCompleter(stringBuffer)

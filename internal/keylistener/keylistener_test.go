@@ -1,6 +1,8 @@
 package keylistener
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 )
 
@@ -43,4 +45,31 @@ func TestIsCommandFileCompletion(t *testing.T) {
 			t.Errorf("test %d failed wanted:%v got: %v", i, tt.wantResult, got)
 		}
 	}
+}
+
+func TestTabCompletesSingleCommand(t *testing.T) {
+	cmds := func(p string) []string { return filterPrefix([]string{"echo", "exit"}, p) }
+	files := func(string) ([]string, error) { return nil, nil }
+	var out bytes.Buffer
+	ks := NewKeyStrokeListener(strings.NewReader("ec\t\r"), &out, cmds, files)
+
+	got, err := ks.HandleInput("$ ")
+	if err != nil {
+		t.Error(err)
+	}
+	want := "echo "
+
+	if got != want {
+		t.Errorf("got:%s want:%s", got, want)
+	}
+}
+
+func filterPrefix(words []string, prefix string) []string {
+	var out []string
+	for _, w := range words {
+		if strings.HasPrefix(w, prefix) {
+			out = append(out, w)
+		}
+	}
+	return out
 }
